@@ -110,3 +110,36 @@ body {
 }
 @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.06); } }
 #prompt { display: none; }
+
+/* ---------- 星图雷达（小地图） ---------- */
+#minimap-wrap {
+  position: absolute; right: 22px; bottom: 22px; width: 190px; text-align: center;
+  background: rgba(6, 16, 34, 0.5); border: 1px solid rgba(120, 220, 255, 0.35);
+  border-radius: 14px; padding: 8px 8px 6px; backdrop-filter: blur(5px);
+  box-shadow: 0 0 20px rgba(40, 140, 255, 0.18);
+}
+.mm-title { font-size: 12px; letter-spacing: 3px; color: #7fd4ff; margin-bottom: 5px; text-shadow: 0 0 8px rgba(60,180,255,0.6); }
+#minimap { display: block; width: 174px; height: 174px; margin: 0 auto; }
+.mm-foot { font-size: 10px; color: #9fb6c9; margin-top: 4px; letter-spacing: 1px; }
+
+/* ---------- 边缘方向指示箭头 ---------- */
+#edge-markers { position: absolute; inset: 0; }
+.edge-marker {
+  position: absolute; transform: translate(-50%, -50%);
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  pointer-events: none; will-change: left, top;
+}
+.edge-arrow {
+  width: 0; height: 0;
+  border-left: 9px solid transparent; border-right: 9px solid transparent;
+  border-bottom: 17px solid #7fd4ff;
+  filter: drop-shadow(0 0 6px rgba(80, 180, 255, 0.9));
+  animation: edgePulse 1.6s ease-in-out infinite;
+}
+@keyframes edgePulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+.edge-label {
+  font-size: 11px; color: #eaf6ff; white-space: nowrap;
+  background: rgba(6, 16, 34, 0.66); border: 1px solid rgba(120, 220, 255, 0.32);
+  border-radius: 6px; padding: 1px 7px; text-shadow: 0 0 6px rgba(60, 180, 255, 0.7);
+}
+.edge-dist { font-size: 10px; color: #9fb6c9; }
