@@ -16,6 +16,7 @@
 </head>
 <body>
   <canvas id="scene"></canvas>
+  <div id="speedlines"></div>
 
   <!-- 座舱 HUD -->
   <div id="hud">
@@ -44,8 +45,9 @@
       <div><b>Shift</b> 引擎加速</div>
       <div><b>E</b> 靠近天体查看科普</div>
       <div><b>星图雷达</b> 右下角小地图 + 边缘箭头指引方向</div>
-      <div><b>H</b> 开关本帮助</div>
-      <div class="help-tip">ESC 解除鼠标锁定 · 飞向发光的天体就能学到知识</div>
+      <div><b>R</b> 结束任务 · 返航结算</div>
+      <div><b>ESC</b> 暂停任务</div>
+      <div class="help-tip">飞向发光的天体就能学到知识</div>
     </div>
 
     <!-- 星图雷达 + 边缘方向指示 -->
@@ -68,16 +70,51 @@
     </div>
   </div>
 
-  <!-- 进入提示 / 开场 -->
+  <!-- 发射倒计时覆盖层 -->
+  <div id="launch">
+    <div id="launch-num"></div>
+    <div id="launch-sub"></div>
+  </div>
+
+  <!-- 开场 / 准备发射 -->
   <div id="blocker">
     <div id="intro">
       <div class="intro-title"></div>
       <div class="intro-body"></div>
-      <div class="intro-start">▶ 点击进入宇宙</div>
+      <div class="intro-controls">
+        <div>🕹 <b>W / A / S / D</b> 驾驶 · <b>鼠标</b> 转向 · <b>Shift</b> 加速</div>
+        <div>🛰 飞近发光天体按 <b>E</b> 解锁宇宙知识</div>
+        <div>🧭 右下角星图雷达 + 边缘箭头帮你导航</div>
+        <div>⌨ <b>R</b> 随时结束任务 · 返航结算 · <b>ESC</b> 暂停</div>
+      </div>
+      <button id="btn-launch">🚀 启动引擎 · 准备发射</button>
     </div>
   </div>
 
-  <div id="prompt"></div>
+  <!-- 任务暂停 -->
+  <div id="mission-pause">
+    <div class="mp-inner">
+      <div class="mp-icon">⏸</div>
+      <div class="mp-title">任务暂停</div>
+      <div class="mp-tip">引擎待机中，宇宙仍在等待你</div>
+      <div class="mp-btns">
+        <button id="btn-resume">▶ 继续探索</button>
+        <button id="btn-return">⬅ 结束任务 · 返航</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 返航结算 -->
+  <div id="mission-return">
+    <div class="mr-inner">
+      <div class="mr-icon">🛰</div>
+      <div class="mr-title">任务结束 · 欢迎返航</div>
+      <div class="mr-stats" id="mr-stats"></div>
+      <div class="mr-list-title">本次探索足迹</div>
+      <div class="mr-list" id="mr-list"></div>
+      <button id="btn-relaunch">🚀 再次发射</button>
+    </div>
+  </div>
 
   <script type="module" src="main.js"></script>
 </body>
