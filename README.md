@@ -38,6 +38,8 @@
    **程序化视觉**：星空粒子、发光星云、土星环、黑洞吸积盘、脉冲星光束、辉光后处理——全部代码生成，无需任何外部素材。
 - 📦 **Zero backend, pure static** — a single webpage runs anywhere; trivial to deploy on GitHub Pages.
    **零后端纯静态**：一个网页直接跑，轻松部署到 GitHub Pages。
+- 🧭 **Game-style HUD** — a bottom-right **star-map radar** (north-up, player-centered) shows every destination's bearing & type; off-screen bodies get glowing **edge arrows** at the screen border pointing the way, with name + distance. Like a MOBA minimap.
+   **游戏化 HUD**：右下角**星图雷达**（上北下南、玩家居中）显示每个地点的方位与类型配色；屏幕外的天体会在边缘弹出发光**方向箭头**并标注名字与距离，像 MOBA 小地图一样指路。
 
 ---
 
