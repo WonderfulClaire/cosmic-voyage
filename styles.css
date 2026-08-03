@@ -143,3 +143,102 @@ body {
   border-radius: 6px; padding: 1px 7px; text-shadow: 0 0 6px rgba(60, 180, 255, 0.7);
 }
 .edge-dist { font-size: 10px; color: #9fb6c9; }
+
+/* ---------- 发射速度线 / 屏幕震动 ---------- */
+#speedlines {
+  position: fixed; inset: -20%; z-index: 5; pointer-events: none; opacity: 0;
+  background: radial-gradient(circle at 50% 50%, transparent 16%, rgba(120,210,255,0) 28%, rgba(120,210,255,0.22) 52%, rgba(120,210,255,0) 68%);
+}
+body.launching #speedlines { animation: warp 1.6s ease-out; }
+@keyframes warp {
+  0%   { opacity: 0; transform: scale(2.2); }
+  30%  { opacity: 1; }
+  100% { opacity: 0; transform: scale(0.7); }
+}
+@keyframes shake {
+  0%,100% { transform: translate(0,0); }
+  20% { transform: translate(-6px,4px); }
+  40% { transform: translate(5px,-5px); }
+  60% { transform: translate(-4px,-3px); }
+  80% { transform: translate(4px,3px); }
+}
+body.launching #scene { animation: shake 0.4s linear 4; }
+body.returning #scene { animation: shake 0.5s linear 3; }
+
+/* ---------- 发射倒计时 ---------- */
+#launch {
+  position: fixed; inset: 0; z-index: 50; display: none;
+  flex-direction: column; align-items: center; justify-content: center;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 50%, rgba(0,0,8,0.35), rgba(0,0,8,0.85));
+}
+#launch-num {
+  font-size: 190px; font-weight: 900; line-height: 1;
+  background: linear-gradient(180deg, #fff2c0, #ffae3b);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  text-shadow: 0 0 50px rgba(255,170,60,0.6);
+}
+#launch-num.pop { animation: numPop 0.8s ease-out; }
+@keyframes numPop {
+  0%   { transform: scale(0.3); opacity: 0; }
+  30%  { transform: scale(1.18); opacity: 1; }
+  100% { transform: scale(1); opacity: 0.96; }
+}
+#launch-sub {
+  font-size: 20px; color: #cdeeff; margin-top: 18px; letter-spacing: 3px;
+  text-shadow: 0 0 10px rgba(60,180,255,0.6);
+}
+
+/* ---------- 开场引导按钮 / 暂停 / 结算 面板 ---------- */
+.intro-controls { font-size: 14px; line-height: 2; color: #bcd6ea; margin: 18px 0 24px; }
+.intro-controls b { color: #7fd4ff; }
+#btn-launch {
+  font-size: 18px; font-weight: 700; color: #06121f; border: none; cursor: pointer;
+  background: linear-gradient(90deg, #7fd4ff, #4aa8ff); padding: 14px 36px; border-radius: 30px;
+  animation: pulse 2s infinite; pointer-events: auto;
+}
+#btn-launch:hover { filter: brightness(1.1); }
+
+#mission-pause, #mission-return {
+  position: fixed; inset: 0; z-index: 45; display: none;
+  align-items: center; justify-content: center;
+  background: rgba(0, 4, 12, 0.62); backdrop-filter: blur(4px);
+}
+.mp-inner, .mr-inner {
+  position: relative; width: min(480px, 90vw); text-align: center; padding: 34px 36px;
+  background: linear-gradient(160deg, rgba(10,22,46,0.97), rgba(6,12,28,0.97));
+  border: 1px solid rgba(120,220,255,0.4); border-radius: 18px;
+  box-shadow: 0 0 50px rgba(40,140,255,0.35);
+}
+.mp-icon, .mr-icon { font-size: 46px; margin-bottom: 6px; }
+.mp-title, .mr-title {
+  font-size: 24px; font-weight: 800; margin-bottom: 8px;
+  background: linear-gradient(90deg, #7fd4ff, #ffe27a);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.mp-tip { font-size: 14px; color: #bcd6ea; margin-bottom: 22px; }
+.mp-btns { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+#btn-resume, #btn-return, #btn-relaunch {
+  font-size: 15px; font-weight: 600; cursor: pointer; border-radius: 24px; padding: 12px 24px;
+  border: 1px solid rgba(120,220,255,0.45); background: rgba(20,40,70,0.6); color: #eaf6ff; pointer-events: auto;
+}
+#btn-resume { background: linear-gradient(90deg, #7fd4ff, #4aa8ff); color: #06121f; border: none; }
+#btn-relaunch { margin-top: 24px; background: linear-gradient(90deg, #7fd4ff, #4aa8ff); color: #06121f; border: none; }
+#btn-resume:hover, #btn-return:hover, #btn-relaunch:hover { filter: brightness(1.12); }
+
+/* 结算统计 */
+.mr-stats { display: flex; gap: 12px; justify-content: center; margin: 18px 0 8px; }
+.mr-stat {
+  flex: 1; background: rgba(8,18,36,0.6); border: 1px solid rgba(120,220,255,0.25);
+  border-radius: 12px; padding: 14px 8px;
+}
+.mr-stat span { display: block; font-size: 26px; font-weight: 800; color: #ffe27a; }
+.mr-stat span small { font-size: 14px; color: #9fb6c9; }
+.mr-stat label { font-size: 12px; color: #9fb6c9; margin-top: 4px; display: block; }
+.mr-list-title { font-size: 13px; color: #7fd4ff; margin: 14px 0 8px; letter-spacing: 1px; }
+.mr-list { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; min-height: 30px; }
+.mr-badge {
+  font-size: 12px; color: #eaf6ff; background: rgba(40,90,150,0.5);
+  border: 1px solid rgba(120,220,255,0.35); border-radius: 16px; padding: 4px 12px;
+}
+.mr-empty { font-size: 13px; color: #9fb6c9; }
