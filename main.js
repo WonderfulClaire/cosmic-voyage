@@ -1,10 +1,10 @@
-// main.js —— 沉浸式宇宙旅行核心逻辑
+// main.js —— 沉浸式宇宙旅行核心逻辑（整个宇宙版）
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-import { LOCATIONS, INTRO } from './knowledge.js';
+import { LOCATIONS, ZONES, INTRO } from './knowledge.js';
 
 /* ---------------- 渲染器 / 场景 / 相机 ---------------- */
 const canvas = document.getElementById('scene');
@@ -18,7 +18,7 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x000006);
 scene.fog = new THREE.FogExp2(0x000006, 0.0000008);
 
-const camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, 0.1, 400000);
+const camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, 0.1, 600000);
 camera.position.set(3450, 220, 520);
 camera.lookAt(0, 0, 0);
 
@@ -32,14 +32,18 @@ let fovTarget = 72;               // 相机 FOV 缓动目标（发射拉伸 / �
 const visited = new Set();        // 已查看科普的地点（去重）
 let totalDist = 0;                // 累计飞行距离（u）
 let missionStart = 0;             // 发射时刻（performance.now）
+let uiOpen = false;               // 星图航图 / 图鉴是否打开（避免误触发暂停）
+let flyTo = null;                 // 区域跃迁目标 {target, zone}
+let currentZone = ZONES[0];       // 当前所在区域（就近判定）
 
 controls.addEventListener('lock', () => {
   blocker.style.display = 'none';
   if (gameState === 'paused') { gameState = 'flying'; hidePause(); }
 });
 controls.addEventListener('unlock', () => {
+  if (uiOpen) return;                                   // 打开航图/图鉴时不进入暂停
   if (gameState === 'flying') { gameState = 'paused'; showPause(); }
-  else if (gameState === 'countdown') {            // 倒计时中误按 ESC：回到开场
+  else if (gameState === 'countdown') {                 // 倒计时中误按 ESC：回到开场
     gameState = 'intro';
     document.getElementById('launch').style.display = 'none';
     blocker.style.display = 'flex';
@@ -76,15 +80,19 @@ function makePlanetTexture(baseHex, opts = {}) {
   }
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
 }
-function makeSunTexture() {
+function makeStarTexture(hex) {
   const c = document.createElement('canvas'); c.width = c.height = 512;
   const ctx = c.getContext('2d');
-  ctx.fillStyle = '#ffb733'; ctx.fillRect(0, 0, 512, 512);
+  const col = new THREE.Color(hex);
+  ctx.fillStyle = `#${col.getHexString()}`; ctx.fillRect(0, 0, 512, 512);
   for (let i = 0; i < 320; i++) {
     const x = Math.random() * 512, y = Math.random() * 512, r = 4 + Math.random() * 22;
     const b = Math.random();
+    const rr = Math.min(255, col.r * 255 + b * 60) | 0;
+    const gg = Math.min(255, col.g * 255 + b * 50) | 0;
+    const bb = Math.min(255, col.b * 255 + b * 40) | 0;
     ctx.beginPath();
-    ctx.fillStyle = `rgba(255,${180 + b * 60 | 0},${60 + b * 80 | 0},${0.22 + Math.random() * 0.3})`;
+    ctx.fillStyle = `rgba(${rr},${gg},${bb},${0.22 + Math.random() * 0.3})`;
     ctx.arc(x, y, r, 0, 7); ctx.fill();
   }
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
@@ -129,10 +137,10 @@ function makeTextSprite(text) {
 
 /* ---------------- 星空 ---------------- */
 function buildStarfield() {
-  const n = 9000, g = new THREE.BufferGeometry();
+  const n = 14000, g = new THREE.BufferGeometry();
   const pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
   for (let i = 0; i < n; i++) {
-    const r = 50000 + Math.random() * 80000;
+    const r = 80000 + Math.random() * 120000;
     const th = Math.random() * Math.PI * 2, ph = Math.acos(2 * Math.random() - 1);
     pos[i * 3] = r * Math.sin(ph) * Math.cos(th);
     pos[i * 3 + 1] = r * Math.cos(ph);
@@ -144,12 +152,12 @@ function buildStarfield() {
   }
   g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   g.setAttribute('color', new THREE.BufferAttribute(col, 3));
-  const m = new THREE.PointsMaterial({ size: 140, sizeAttenuation: true, vertexColors: true, transparent: true, depthWrite: false });
+  const m = new THREE.PointsMaterial({ size: 220, sizeAttenuation: true, vertexColors: true, transparent: true, depthWrite: false });
   scene.add(new THREE.Points(g, m));
 }
 
-/* ---------------- 点云（星云 / 星系内部） ---------------- */
-function makeCloud(center, radius, count, colorHex, flat = 1) {
+/* ---------------- 点云（星云 / 星系 / 星团 / 背景） ---------------- */
+function makeCloud(center, radius, count, colorHex, flat = 1, opacity = 0.65) {
   const g = new THREE.BufferGeometry(), pos = new Float32Array(count * 3);
   for (let i = 0; i < count; i++) {
     const u = Math.random(), v = Math.random();
@@ -159,7 +167,7 @@ function makeCloud(center, radius, count, colorHex, flat = 1) {
     pos[i * 3 + 2] = center.z + r * Math.sin(ph) * Math.sin(th);
   }
   g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  const m = new THREE.PointsMaterial({ color: colorHex, size: radius * 0.03, transparent: true, opacity: 0.65, depthWrite: false, blending: THREE.AdditiveBlending });
+  const m = new THREE.PointsMaterial({ color: colorHex, size: radius * 0.03, transparent: true, opacity, depthWrite: false, blending: THREE.AdditiveBlending });
   return new THREE.Points(g, m);
 }
 
@@ -207,6 +215,17 @@ function makeAccretionDisk(radius, colorHex) {
   return new THREE.Mesh(geo, mat);
 }
 
+/* ---------------- 脉冲星 / 磁星 光束 ---------------- */
+function makePulsarBeams(radius, accent) {
+  const grp = new THREE.Group();
+  const beamMat = new THREE.MeshBasicMaterial({ color: accent, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false });
+  const beamGeo = new THREE.CylinderGeometry(radius * 0.16, radius * 0.16, radius * 34, 16, 1, true);
+  const b1 = new THREE.Mesh(beamGeo, beamMat); b1.position.y = radius * 17; grp.add(b1);
+  const b2 = new THREE.Mesh(beamGeo, beamMat); b2.position.y = -radius * 17; grp.add(b2);
+  const glow = makeGlowSprite(accent, radius * 8); grp.add(glow);
+  return grp;
+}
+
 /* ---------------- 构建所有地点 ---------------- */
 function buildLocations() {
   for (const L of LOCATIONS) {
@@ -220,7 +239,7 @@ function buildLocations() {
     if (L.isStar) {
       const mesh = new THREE.Mesh(
         new THREE.SphereGeometry(L.radius, 48, 48),
-        new THREE.MeshBasicMaterial({ map: makeSunTexture(), color: L.color })
+        new THREE.MeshBasicMaterial({ map: makeStarTexture(L.color), color: L.color })
       );
       const glow = makeGlowSprite(L.accent, L.radius * 6);
       mesh.add(glow);
@@ -239,32 +258,120 @@ function buildLocations() {
     } else if (L.isNebula) {
       const glow = makeGlowSprite(L.color, L.radius * 2.6);
       glow.position.copy(p); scene.add(glow);
-      scene.add(makeCloud(p, L.radius * 0.9, 1400, L.accent, 0.7));
+      scene.add(makeCloud(p, L.radius * 0.9, 1500, L.accent, 0.7));
       L._mesh = glow;
 
     } else if (L.isGalaxy) {
       const glow = makeGlowSprite(L.color, L.radius * 2.2);
       glow.position.copy(p); scene.add(glow);
-      scene.add(makeCloud(p, L.radius * 0.95, 1800, L.accent, 0.25));
+      scene.add(makeCloud(p, L.radius * 0.95, 2000, L.accent, 0.25, 0.6));
       L._mesh = glow;
 
     } else if (L.isBelt) {
       const belt = makeAsteroidBelt(p, L.radius);
       scene.add(belt); L._mesh = belt;
 
-    } else if (L.isPulsar) {
+    } else if (L.isPulsar || L.isMagnetar) {
       const mesh = new THREE.Mesh(
         new THREE.SphereGeometry(L.radius, 32, 32),
         new THREE.MeshBasicMaterial({ color: L.accent })
       );
-      const beamMat = new THREE.MeshBasicMaterial({ color: L.accent, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false });
-      const beamGeo = new THREE.CylinderGeometry(L.radius * 0.16, L.radius * 0.16, L.radius * 34, 16, 1, true);
-      const b1 = new THREE.Mesh(beamGeo, beamMat); b1.position.y = L.radius * 17; mesh.add(b1);
-      const b2 = new THREE.Mesh(beamGeo, beamMat); b2.position.y = -L.radius * 17; mesh.add(b2);
-      const glow = makeGlowSprite(L.accent, L.radius * 8); mesh.add(glow);
+      mesh.add(makePulsarBeams(L.radius, L.accent));
       mesh.position.copy(p); scene.add(mesh); L._mesh = mesh;
 
+    } else if (L.isRedGiant) {
+      const mesh = new THREE.Mesh(
+        new THREE.SphereGeometry(L.radius, 48, 48),
+        new THREE.MeshBasicMaterial({ color: L.color })
+      );
+      const glow = makeGlowSprite(L.accent, L.radius * 3.2);
+      mesh.add(glow);
+      mesh.position.copy(p); scene.add(mesh); L._mesh = mesh; L._pulse = Math.random() * 6;
+
+    } else if (L.isWhiteDwarf) {
+      const mesh = new THREE.Mesh(
+        new THREE.SphereGeometry(L.radius, 32, 32),
+        new THREE.MeshBasicMaterial({ color: L.color })
+      );
+      const glow = makeGlowSprite(L.accent, L.radius * 7);
+      mesh.add(glow);
+      mesh.position.copy(p); scene.add(mesh); L._mesh = mesh;
+
+    } else if (L.isPlanetary) {
+      const ring = new THREE.Mesh(
+        new THREE.TorusGeometry(L.radius * 0.8, L.radius * 0.28, 16, 64),
+        new THREE.MeshBasicMaterial({ color: L.accent, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false })
+      );
+      ring.rotation.x = Math.random() * Math.PI; ring.rotation.y = Math.random() * Math.PI;
+      ring.position.copy(p); scene.add(ring);
+      const glow = makeGlowSprite(L.color, L.radius * 2.2);
+      glow.position.copy(p); scene.add(glow);
+      L._mesh = ring;
+
+    } else if (L.isComet) {
+      const mesh = new THREE.Mesh(
+        new THREE.SphereGeometry(L.radius, 24, 24),
+        new THREE.MeshBasicMaterial({ color: 0xffffff })
+      );
+      const glow = makeGlowSprite(L.accent, L.radius * 5);
+      mesh.add(glow);
+      // 彗尾：指向远离太阳（原点）的方向
+      const tailDir = p.clone().normalize();
+      const tailLen = L.radius * 26;
+      const tail = new THREE.Mesh(
+        new THREE.ConeGeometry(L.radius * 1.4, tailLen, 20, 1, true),
+        new THREE.MeshBasicMaterial({ color: L.accent, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })
+      );
+      const up = new THREE.Vector3(0, 1, 0);
+      tail.quaternion.setFromUnitVectors(up, tailDir);
+      tail.position.copy(p).add(tailDir.clone().multiplyScalar(tailLen / 2));
+      scene.add(mesh); scene.add(tail);
+      mesh.position.copy(p); L._mesh = mesh;
+
+    } else if (L.isNeutronBinary) {
+      const grp = new THREE.Group();
+      const m1 = new THREE.Mesh(new THREE.SphereGeometry(L.radius * 0.6, 24, 24), new THREE.MeshBasicMaterial({ color: L.color }));
+      const m2 = new THREE.Mesh(new THREE.SphereGeometry(L.radius * 0.5, 24, 24), new THREE.MeshBasicMaterial({ color: L.accent }));
+      m1.position.set(L.radius * 0.9, 0, 0); m2.position.set(-L.radius * 0.9, 0, 0);
+      const ring = new THREE.Mesh(
+        new THREE.TorusGeometry(L.radius * 1.3, L.radius * 0.12, 12, 48),
+        new THREE.MeshBasicMaterial({ color: L.accent, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false })
+      );
+      grp.add(m1, m2, ring);
+      const glow = makeGlowSprite(L.accent, L.radius * 4); grp.add(glow);
+      grp.position.copy(p); scene.add(grp); L._mesh = grp; L._spin = grp;
+
+    } else if (L.isGlobular) {
+      const glow = makeGlowSprite(L.color, L.radius * 1.8);
+      glow.position.copy(p); scene.add(glow);
+      scene.add(makeCloud(p, L.radius * 0.95, 2600, L.accent, 1, 0.8));
+      L._mesh = glow;
+
+    } else if (L.isScatter) {
+      const glow = makeGlowSprite(L.color, L.radius * 1.6);
+      glow.position.copy(p); scene.add(glow);
+      scene.add(makeCloud(p, L.radius * 1.1, 800, L.accent, 1, 0.7));
+      L._mesh = glow;
+
+    } else if (L.isQuasar) {
+      const core = new THREE.Mesh(
+        new THREE.SphereGeometry(L.radius * 0.5, 24, 24),
+        new THREE.MeshBasicMaterial({ color: 0xffffff })
+      );
+      const glow = makeGlowSprite(0xffffff, L.radius * 4);
+      core.add(glow);
+      const jetMat = new THREE.MeshBasicMaterial({ color: L.accent, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+      const jetGeo = new THREE.CylinderGeometry(L.radius * 0.18, L.radius * 0.18, L.radius * 8, 16, 1, true);
+      const j1 = new THREE.Mesh(jetGeo, jetMat); j1.position.y = L.radius * 4; core.add(j1);
+      const j2 = new THREE.Mesh(jetGeo, jetMat); j2.position.y = -L.radius * 4; core.add(j2);
+      core.position.copy(p); scene.add(core); L._mesh = core; L._spin = core;
+
+    } else if (L.isCMB) {
+      // 包裹区域的极暗背景壳：身处其中像被宇宙余晖包围
+      scene.add(makeCloud(p, L.radius, 6000, L.color, 1, 0.16));
+
     } else {
+      // 行星 / 卫星 / 矮行星 默认
       const mesh = new THREE.Mesh(
         new THREE.SphereGeometry(L.radius, 48, 48),
         new THREE.MeshStandardMaterial({ map: makePlanetTexture(L.color, { bands: L.id === 'jupiter' ? 11 : 6, spots: 50 }), roughness: 1, metalness: 0 })
@@ -299,6 +406,8 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyE') toggleCard();
   if (e.code === 'KeyH') toggleHelp();
   if (e.code === 'KeyR') triggerReturn();
+  if (e.code === 'KeyG') toggleStarChart();
+  if (e.code === 'KeyB') toggleCodex();
 });
 addEventListener('keyup', e => { keys[e.code] = false; });
 
@@ -307,6 +416,7 @@ const hudSpeed = document.getElementById('hud-speed');
 const hudPos = document.getElementById('hud-pos');
 const hudTarget = document.getElementById('hud-target');
 const hudHint = document.getElementById('hud-hint');
+const hudZone = document.getElementById('hud-zone');
 const helpPanel = document.getElementById('help');
 const card = document.getElementById('card');
 const cardTitle = document.getElementById('card-title');
@@ -318,24 +428,43 @@ const intro = document.getElementById('intro');
 intro.querySelector('.intro-title').textContent = INTRO.title;
 intro.querySelector('.intro-body').innerHTML = INTRO.lines.map(l => `<div>${l}</div>`).join('');
 
+function inCurrentZone(L) { return L.zone === currentZone.id; }
+
 let nearest = null;
 function updateHUD() {
+  // 当前区域（就近判定），跃迁途中以目标区域为准
+  if (!flyTo) {
+    let best = ZONES[0], bestD = Infinity;
+    const c = new THREE.Vector3();
+    for (const z of ZONES) {
+      c.set(...z.center);
+      const d = camera.position.distanceTo(c);
+      if (d < bestD) { bestD = d; best = z; }
+    }
+    if (best.id !== currentZone.id) currentZone = best;
+  }
+  hudZone.textContent = `◈ ${currentZone.name} · ${currentZone.nameEn}`;
+
   const v = velocity.length();
   hudSpeed.textContent = `速度 ${Math.round(v)} u/s`;
   hudPos.textContent = `坐标 ${Math.round(camera.position.x)}, ${Math.round(camera.position.y)}, ${Math.round(camera.position.z)}`;
-  // nearest
+  // nearest（仅当前区域）
   let best = null, bestD = Infinity;
   for (const L of LOCATIONS) {
+    if (!inCurrentZone(L)) continue;
     const d = camera.position.distanceTo(L._pos);
     if (d < bestD) { bestD = d; best = L; }
   }
   nearest = best;
-  const margin = best.radius * 1.25 + 450;
-  hudTarget.textContent = `最近 · ${best.name}（${Math.round(bestD)} u）`;
-  if (bestD < margin) {
-    hudHint.style.display = 'block';
-    hudHint.textContent = `按 E 查看「${best.name}」科普`;
+  if (best) {
+    const margin = best.radius * 1.25 + 450;
+    hudTarget.textContent = `最近 · ${best.name}（${Math.round(bestD)} u）`;
+    if (bestD < margin) {
+      hudHint.style.display = 'block';
+      hudHint.textContent = `按 E 查看「${best.name}」科普`;
+    } else { hudHint.style.display = 'none'; }
   } else {
+    hudTarget.textContent = `最近 · —`;
     hudHint.style.display = 'none';
   }
   drawMinimap();
@@ -350,23 +479,28 @@ function toggleCard() {
   cardTitle.textContent = f.title;
   cardTldr.textContent = f.tldr;
   cardPoints.innerHTML = f.points.map(p => `<li>${p}</li>`).join('');
-  visited.add(nearest.name);          // 记录探索足迹
+  visited.add(nearest.name);
   card.style.display = 'flex';
 }
 document.getElementById('card-close').addEventListener('click', () => card.style.display = 'none');
 
-/* ---------------- 星图雷达（小地图） + 边缘方向指示 ---------------- */
+/* ---------------- 星图雷达（小地图，仅当前区域） + 边缘方向指示 ---------------- */
 const TYPE_COLORS = {
   '恒星': '#ffcf6b', '黑洞': '#ff5a5a', '星云': '#c98bff', '星系': '#9b8bff',
   '脉冲星': '#7fd4ff', '小行星带': '#cbb08a', '岩石行星': '#6fd0ff',
-  '气态巨行星': '#ffd9a3', '冰巨星': '#9be7ff', '矮行星': '#bfe3c0'
+  '气态巨行星': '#ffd9a3', '冰巨星': '#9be7ff', '矮行星': '#bfe3c0',
+  '卫星': '#d8d8d8', '彗星': '#9fd8ff', '红巨星': '#ff8a5a', '白矮星': '#cfe6ff',
+  '行星状星云': '#8fe0ff', '中子星双星': '#aad4ff', '磁星': '#ff9aff',
+  '球状星团': '#ffe0a0', '疏散星团': '#aad4ff', '活动星系核': '#ffffff',
+  '超新星遗迹': '#ff8844', '系外行星': '#8fd0a0', '热木星': '#ffb070',
+  '红矮星': '#ff7a5a', '宇宙背景辐射': '#7fa0c8', '星系中心黑洞': '#ffaa33', '矮星系': '#ffd9a0'
 };
 const typeColor = t => TYPE_COLORS[t] || '#7fd4ff';
 
 const minimap = document.getElementById('minimap');
 const mmCtx = minimap.getContext('2d');
 const MM_SIZE = 190, MM_R = 84, MM_CX = MM_SIZE / 2, MM_CY = MM_SIZE / 2;
-const RADAR_RANGE = 28000;                 // 雷达边缘对应的世界距离
+const RADAR_RANGE = 7000;
 const mmScale = (MM_R - 6) / RADAR_RANGE;
 
 function drawMinimap() {
@@ -383,6 +517,7 @@ function drawMinimap() {
 
   const px = camera.position.x, pz = camera.position.z;
   for (const L of LOCATIONS) {
+    if (!inCurrentZone(L)) continue;
     let sx = (L._pos.x - px) * mmScale;
     let sy = (L._pos.z - pz) * mmScale;
     const d = Math.hypot(sx, sy);
@@ -398,7 +533,6 @@ function drawMinimap() {
     }
   }
 
-  // 玩家朝向箭头（黄）
   const fwd = new THREE.Vector3(); camera.getWorldDirection(fwd);
   const hl = Math.hypot(fwd.x, fwd.z) || 1;
   const ax = fwd.x / hl, az = fwd.z / hl;
@@ -412,7 +546,6 @@ function drawMinimap() {
   mmCtx.lineTo(MM_CX + ah * 0.45 + perpX * 6, MM_CY + av * 0.45 + perpZ * 6);
   mmCtx.lineTo(MM_CX + ah * 0.45 - perpX * 6, MM_CY + av * 0.45 - perpZ * 6);
   mmCtx.closePath(); mmCtx.fillStyle = '#ffe27a'; mmCtx.fill();
-  // 玩家点
   mmCtx.fillStyle = '#ffffff';
   mmCtx.beginPath(); mmCtx.arc(MM_CX, MM_CY, 3.2, 0, Math.PI * 2); mmCtx.fill();
 }
@@ -420,7 +553,7 @@ function drawMinimap() {
 // 边缘方向指示箭头池
 const edgeContainer = document.getElementById('edge-markers');
 const EDGE_POOL = [];
-const EDGE_MAX = 6;
+const EDGE_MAX = 8;
 for (let i = 0; i < EDGE_MAX; i++) {
   const el = document.createElement('div'); el.className = 'edge-marker'; el.style.display = 'none';
   const arrow = document.createElement('div'); arrow.className = 'edge-arrow';
@@ -433,20 +566,20 @@ for (let i = 0; i < EDGE_MAX; i++) {
 
 const _fwd = new THREE.Vector3(), _right = new THREE.Vector3(), _upv = new THREE.Vector3();
 function updateEdgeMarkers() {
-  camera.getWorldDirection(_fwd);                       // 朝向（前）
-  _right.crossVectors(_fwd, camera.up).normalize();    // 右
-  _upv.crossVectors(_right, _fwd).normalize();         // 上
+  camera.getWorldDirection(_fwd);
+  _right.crossVectors(_fwd, camera.up).normalize();
+  _upv.crossVectors(_right, _fwd).normalize();
 
   const tanV = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
   const tanH = tanV * camera.aspect;
   const halfW = innerWidth / 2 - 96, halfH = innerHeight / 2 - 80;
 
-  // 收集 screen 外（或背后）的地点，按距离排序取最近 EDGE_MAX 个
   const cand = [];
   for (const L of LOCATIONS) {
+    if (!inCurrentZone(L)) continue;
     const r = new THREE.Vector3().subVectors(L._pos, camera.position);
     const f = r.dot(_fwd), x = r.dot(_right), y = r.dot(_upv);
-    if (f > 0 && Math.abs(x) < f * tanH && Math.abs(y) < f * tanV) continue; // 在屏幕内，跳过
+    if (f > 0 && Math.abs(x) < f * tanH && Math.abs(y) < f * tanV) continue;
     const dist = camera.position.distanceTo(L._pos);
     cand.push({ L, x, y, f, dist });
   }
@@ -457,17 +590,16 @@ function updateEdgeMarkers() {
     const m = EDGE_POOL[i];
     if (i >= use.length) { m.el.style.display = 'none'; continue; }
     const c = use[i];
-    // 屏幕方向：x 右 / y 上。背后(f<=0)则反向，提示"转身"
     let dx = c.x, dyUp = c.y;
     if (c.f <= 0) { dx = -dx; dyUp = -dyUp; }
-    let dyDown = -dyUp;                                 // 转成屏幕像素（y 向下）
+    let dyDown = -dyUp;
     if (Math.abs(dx) < 1e-3 && Math.abs(dyDown) < 1e-3) { m.el.style.display = 'none'; continue; }
     const tX = dx !== 0 ? halfW / Math.abs(dx) : Infinity;
     const tY = dyDown !== 0 ? halfH / Math.abs(dyDown) : Infinity;
     const t = Math.min(tX, tY);
     const left = innerWidth / 2 + dx * t;
     const top = innerHeight / 2 + dyDown * t;
-    const rot = Math.atan2(dyDown, dx) * 180 / Math.PI + 90; // 箭头默认朝上
+    const rot = Math.atan2(dyDown, dx) * 180 / Math.PI + 90;
     m.el.style.left = left + 'px';
     m.el.style.top = top + 'px';
     m.arrow.style.transform = `rotate(${rot}deg)`;
@@ -475,6 +607,97 @@ function updateEdgeMarkers() {
     m.dist.textContent = Math.round(c.dist) + ' u';
     m.el.style.display = 'flex';
   }
+}
+
+/* ---------------- 星图航图（区域跃迁） ---------------- */
+const starChart = document.getElementById('starchart');
+const scGrid = document.getElementById('sc-grid');
+function buildStarChart() {
+  scGrid.innerHTML = '';
+  for (const z of ZONES) {
+    const total = LOCATIONS.filter(L => L.zone === z.id).length;
+    const cardEl = document.createElement('div');
+    cardEl.className = 'sc-card';
+    cardEl.innerHTML = `
+      <div class="sc-card-name">${z.name}<span>${z.nameEn}</span></div>
+      <div class="sc-card-desc">${z.desc}</div>
+      <div class="sc-card-foot">天体 ${total} 个 · 点击跃迁</div>`;
+    cardEl.addEventListener('click', () => teleportToZone(z));
+    scGrid.appendChild(cardEl);
+  }
+}
+function teleportToZone(z) {
+  starChart.style.display = 'none';
+  uiOpen = false;
+  currentZone = z;
+  flyTo = { target: new THREE.Vector3(...z.view) };
+  velocity.set(0, 0, 0);
+  gameState = 'flying';
+  controls.lock();                 // 用户手势（点击卡片）内调用，合法
+}
+function toggleStarChart() {
+  if (starChart.style.display === 'flex') { closeStarChart(); return; }
+  uiOpen = true;
+  if (controls.isLocked) controls.unlock();
+  starChart.style.display = 'flex';
+}
+function closeStarChart() {
+  starChart.style.display = 'none';
+  uiOpen = false;
+  if (gameState === 'flying' || gameState === 'paused') controls.lock();
+}
+
+/* ---------------- 宇宙图鉴 ---------------- */
+const codex = document.getElementById('codex');
+const codexBody = document.getElementById('codex-body');
+function toggleCodex() {
+  if (codex.style.display === 'flex') { closeCodex(); return; }
+  buildCodex();
+  uiOpen = true;
+  if (controls.isLocked) controls.unlock();
+  codex.style.display = 'flex';
+}
+function closeCodex() {
+  codex.style.display = 'none';
+  uiOpen = false;
+  if (gameState === 'flying' || gameState === 'paused') controls.lock();
+}
+function buildCodex() {
+  const zoneRows = ZONES.map(z => {
+    const all = LOCATIONS.filter(L => L.zone === z.id);
+    const done = all.filter(L => visited.has(L.name)).length;
+    const pct = Math.round(done / all.length * 100);
+    return `<div class="cx-row"><span class="cx-name">${z.name}</span>
+      <span class="cx-bar"><i style="width:${pct}%"></i></span>
+      <span class="cx-num">${done}/${all.length}</span></div>`;
+  }).join('');
+  // 按类型
+  const byType = {};
+  for (const L of LOCATIONS) {
+    byType[L.type] = byType[L.type] || { total: 0, done: 0, col: typeColor(L.type) };
+    byType[L.type].total++;
+    if (visited.has(L.name)) byType[L.type].done++;
+  }
+  const typeRows = Object.entries(byType).map(([t, o]) => {
+    const pct = Math.round(o.done / o.total * 100);
+    return `<div class="cx-row"><span class="cx-name" style="color:${o.col}">${t}</span>
+      <span class="cx-bar"><i style="width:${pct}%"></i></span>
+      <span class="cx-num">${o.done}/${o.total}</span></div>`;
+  }).join('');
+  codexBody.innerHTML = `
+    <div class="cx-summary">已探索 <b>${visited.size}</b> / ${LOCATIONS.length} 个天体</div>
+    <div class="cx-title">按区域</div>${zoneRows}
+    <div class="cx-title">按类型</div>${typeRows}`;
+}
+
+/* ---------------- 区域进入横幅 ---------------- */
+const zoneBanner = document.getElementById('zone-banner');
+let zoneBannerTimer = null;
+function showZoneBanner(z) {
+  zoneBanner.textContent = `◈ 进入 ${z.name} · ${z.nameEn}`;
+  zoneBanner.classList.add('show');
+  clearTimeout(zoneBannerTimer);
+  zoneBannerTimer = setTimeout(() => zoneBanner.classList.remove('show'), 2600);
 }
 
 /* ---------------- 发射 / 返航仪式 ---------------- */
@@ -495,7 +718,7 @@ function startCountdown() {
   if (gameState === 'countdown' || gameState === 'flying' || gameState === 'returning') return;
   gameState = 'countdown';
   blocker.style.display = 'none';
-  controls.lock();                              // 必须在用户手势内调用
+  controls.lock();
   launchEl.style.display = 'flex';
   const seq = ['3', '2', '1', '🔥 点火'];
   let i = 0;
@@ -513,9 +736,8 @@ function doIgnition() {
   gameState = 'flying';
   missionStart = performance.now();
   totalDist = 0;
-  camera.getWorldDirection(tmp.fwd);
-  velocity.copy(tmp.fwd).multiplyScalar(1700);  // 起步前冲脉冲
-  fovTarget = 108;                              // 相机拉伸（加速感）
+  velocity.copy(camera.getWorldDirection(new THREE.Vector3())).multiplyScalar(1700);
+  fovTarget = 108;
   document.body.classList.add('launching');
   setTimeout(() => { document.body.classList.remove('launching'); fovTarget = 72; }, 1600);
 }
@@ -524,7 +746,7 @@ function triggerReturn() {
   if (gameState !== 'flying' && gameState !== 'paused') return;
   gameState = 'returning';
   controls.unlock();
-  fovTarget = 56;                               // 相机收缩（减速入站感）
+  fovTarget = 56;
   document.body.classList.add('returning');
   setTimeout(() => {
     document.body.classList.remove('returning');
@@ -555,6 +777,8 @@ function resetMission() {
   velocity.set(0, 0, 0);
   visited.clear();
   totalDist = 0;
+  flyTo = null;
+  currentZone = ZONES[0];
   fovTarget = 72; camera.fov = 72; camera.updateProjectionMatrix();
   hideReturn();
 }
@@ -568,10 +792,18 @@ const clock = new THREE.Clock();
 function animate() {
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), 0.05);
-  // 相机 FOV 缓动（发射拉伸 / 返航收缩）
   camera.fov += (fovTarget - camera.fov) * Math.min(1, dt * 6);
   camera.updateProjectionMatrix();
-  if (controls.isLocked && gameState === 'flying') {
+
+  // 区域跃迁：平滑飞向目标观察点
+  if (flyTo) {
+    camera.position.lerp(flyTo.target, 1 - Math.pow(0.0025, dt));
+    if (camera.position.distanceTo(flyTo.target) < 60) {
+      camera.position.copy(flyTo.target);
+      flyTo = null;
+      showZoneBanner(currentZone);
+    }
+  } else if (controls.isLocked && gameState === 'flying') {
     camera.getWorldDirection(tmp.fwd);
     tmp.right.crossVectors(tmp.fwd, camera.up).normalize();
     tmp.up.crossVectors(tmp.right, tmp.fwd).normalize();
@@ -589,7 +821,12 @@ function animate() {
     camera.position.addScaledVector(velocity, dt);
     totalDist += velocity.length() * dt;
   }
-  for (const L of LOCATIONS) if (L._diskMat) L._diskMat.uniforms.uTime.value += dt;
+  // 动效
+  for (const L of LOCATIONS) {
+    if (L._diskMat) L._diskMat.uniforms.uTime.value += dt;
+    if (L._pulse) { const s = 1 + 0.03 * Math.sin(performance.now() * 0.001 + L._pulse); L._mesh.scale.setScalar(s); }
+    if (L._spin) L._spin.rotation.y += dt * 0.3;
+  }
   composer.render();
   updateHUD();
 }
@@ -603,3 +840,6 @@ addEventListener('resize', () => {
   composer.setSize(innerWidth, innerHeight);
   bloom.setSize(innerWidth, innerHeight);
 });
+
+// 初始化航图卡片
+buildStarChart();
