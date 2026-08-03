@@ -370,6 +370,50 @@ function buildLocations() {
       // 包裹区域的极暗背景壳：身处其中像被宇宙余晖包围
       scene.add(makeCloud(p, L.radius, 6000, L.color, 1, 0.16));
 
+    } else if (L.isCraft) {
+      // 航天器 / 探测器 / 望远镜：舱体 + 太阳能板 + 天线 + 天线碟，缓慢转动展示
+      const grp = new THREE.Group();
+      const bodyMat = new THREE.MeshStandardMaterial({ color: L.color, metalness: 0.6, roughness: 0.4, emissive: 0x221a06, emissiveIntensity: 0.25 });
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(L.radius * 0.34, L.radius * 0.34, L.radius * 1.1, 20), bodyMat);
+      const panelMat = new THREE.MeshStandardMaterial({ color: 0x26508a, metalness: 0.3, roughness: 0.5, emissive: 0x0a1a3a, emissiveIntensity: 0.5, side: THREE.DoubleSide });
+      const panelGeo = new THREE.BoxGeometry(L.radius * 1.5, L.radius * 0.04, L.radius * 0.5);
+      const p1 = new THREE.Mesh(panelGeo, panelMat); p1.position.x = L.radius * 1.05;
+      const p2 = new THREE.Mesh(panelGeo, panelMat); p2.position.x = -L.radius * 1.05;
+      const ant = new THREE.Mesh(new THREE.CylinderGeometry(L.radius * 0.04, L.radius * 0.04, L.radius * 0.9, 8), new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.5, roughness: 0.5 }));
+      ant.position.y = L.radius * 0.85;
+      const dish = new THREE.Mesh(new THREE.SphereGeometry(L.radius * 0.3, 20, 12, 0, Math.PI), new THREE.MeshStandardMaterial({ color: 0xeaeaea, metalness: 0.4, roughness: 0.6, side: THREE.DoubleSide }));
+      dish.rotation.x = -Math.PI / 2.2; dish.position.y = L.radius * 0.3;
+      grp.add(body, p1, p2, ant, dish);
+      const glow = makeGlowSprite(L.accent, L.radius * 5); grp.add(glow);
+      grp.position.copy(p); scene.add(grp); L._mesh = grp; L._spin = grp;
+
+    } else if (L.isGnomon) {
+      // 圭表：立表 + 平圭 + 影线，演示“立竿见影”
+      const grp = new THREE.Group();
+      const stone = new THREE.MeshStandardMaterial({ color: L.color, roughness: 0.9, metalness: 0.1 });
+      const pillar = new THREE.Mesh(new THREE.BoxGeometry(L.radius * 0.12, L.radius * 1.5, L.radius * 0.12), stone);
+      pillar.position.y = L.radius * 0.75;
+      const base = new THREE.Mesh(new THREE.BoxGeometry(L.radius * 2.6, L.radius * 0.14, L.radius * 0.7), stone);
+      base.position.y = L.radius * 0.07;
+      const shadow = new THREE.Mesh(new THREE.PlaneGeometry(L.radius * 2.4, L.radius * 0.5), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.25 }));
+      shadow.rotation.x = -Math.PI / 2; shadow.position.y = L.radius * 0.145;
+      grp.add(pillar, base, shadow);
+      const glow = makeGlowSprite(L.accent, L.radius * 4); grp.add(glow);
+      grp.position.copy(p); scene.add(grp); L._mesh = grp; L._spin = grp;
+
+    } else if (L.isRelic) {
+      // 浑仪 / 简仪 / 观星台 / 节气：黄铜环组 + 核心球
+      const grp = new THREE.Group();
+      const brass = new THREE.MeshStandardMaterial({ color: L.color, metalness: 0.75, roughness: 0.35, emissive: 0x3a2a08, emissiveIntensity: 0.35 });
+      const ringGeo = new THREE.TorusGeometry(L.radius, L.radius * 0.07, 14, 80);
+      const r1 = new THREE.Mesh(ringGeo, brass);
+      const r2 = new THREE.Mesh(ringGeo, brass); r2.rotation.x = Math.PI / 2.2;
+      const r3 = new THREE.Mesh(new THREE.TorusGeometry(L.radius * 0.7, L.radius * 0.06, 14, 80), brass); r3.rotation.y = Math.PI / 2.4;
+      const core = new THREE.Mesh(new THREE.SphereGeometry(L.radius * 0.28, 24, 24), new THREE.MeshStandardMaterial({ color: 0xffd9a0, emissive: 0x553300, emissiveIntensity: 0.5 }));
+      grp.add(r1, r2, r3, core);
+      const glow = makeGlowSprite(L.accent, L.radius * 4); grp.add(glow);
+      grp.position.copy(p); scene.add(grp); L._mesh = grp; L._spin = grp;
+
     } else {
       // 行星 / 卫星 / 矮行星 默认
       const mesh = new THREE.Mesh(
@@ -493,7 +537,9 @@ const TYPE_COLORS = {
   '行星状星云': '#8fe0ff', '中子星双星': '#aad4ff', '磁星': '#ff9aff',
   '球状星团': '#ffe0a0', '疏散星团': '#aad4ff', '活动星系核': '#ffffff',
   '超新星遗迹': '#ff8844', '系外行星': '#8fd0a0', '热木星': '#ffb070',
-  '红矮星': '#ff7a5a', '宇宙背景辐射': '#7fa0c8', '星系中心黑洞': '#ffaa33', '矮星系': '#ffd9a0'
+  '红矮星': '#ff7a5a', '宇宙背景辐射': '#7fa0c8', '星系中心黑洞': '#ffaa33', '矮星系': '#ffd9a0',
+  '空间站': '#ffd24a', '探测器': '#9fe0ff', '月球车': '#ffd9a0', '火星车': '#ff8a5a',
+  '太空望远镜': '#c9d4ff', '古代天文仪器': '#e8c45a', '古代天文台': '#d8b85a', '历法体系': '#a0e0a0', '陨石藏品': '#cbb08a'
 };
 const typeColor = t => TYPE_COLORS[t] || '#7fd4ff';
 
