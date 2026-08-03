@@ -40,6 +40,8 @@
    **零后端纯静态**：一个网页直接跑，轻松部署到 GitHub Pages。
 - 🧭 **Game-style HUD** — a bottom-right **star-map radar** (north-up, player-centered) shows every destination's bearing & type; off-screen bodies get glowing **edge arrows** at the screen border pointing the way, with name + distance. Like a MOBA minimap.
    **游戏化 HUD**：右下角**星图雷达**（上北下南、玩家居中）显示每个地点的方位与类型配色；屏幕外的天体会在边缘弹出发光**方向箭头**并标注名字与距离，像 MOBA 小地图一样指路。
+- 🚀 **Launch & return ceremony** — press **「启动引擎」** for a `3-2-1-🔥点火` countdown with screen shake, warp-speed lines and a camera FOV stretch; press `R` (or ESC → 返航) to decelerate and get a **mission debrief**: flight time, destinations explored, distance travelled, and your footprints.
+   **发射 / 返航仪式感**：点「启动引擎」触发 3-2-1-🔥点火 全屏倒计时（屏幕震动 + 曲速隧道 + 相机拉伸 + 起步冲刺）；飞行中按 `R`（或 ESC → 返航）减速收尾，弹出**任务结算**：飞行时长 / 探索地点数 / 飞行距离 / 探索足迹。
 
 ---
 
