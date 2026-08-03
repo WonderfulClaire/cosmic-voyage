@@ -1,66 +1,158 @@
-# 🚀 COSMIC VOYAGE · 沉浸式宇宙旅行
+<p align="center">
+  <img src="assets/banner.png" alt="Cosmic Voyage banner" width="100%">
+</p>
 
-一个用 **Three.js** 打造的网页端沉浸式宇宙旅行应用：你在地球轨道上苏醒，驾驶飞船自由穿梭于太阳系行星、黑洞、星云、星系之间，**靠近任意天体即可弹出真实科普卡片**，边飞边长知识。
+<p align="center">
+  <a href="https://img.shields.io/github/stars/WonderfulClaire/cosmic-voyage?style=for-the-badge"><img src="https://img.shields.io/github/stars/WonderfulClaire/cosmic-voyage?style=for-the-badge" alt="GitHub stars"></a>
+  <a href="https://img.shields.io/github/forks/WonderfulClaire/cosmic-voyage?style=for-the-badge"><img src="https://img.shields.io/github/forks/WonderfulClaire/cosmic-voyage?style=for-the-badge" alt="GitHub forks"></a>
+  <a href="https://github.com/WonderfulClaire/cosmic-voyage/blob/main/LICENSE"><img src="https://img.shields.io/github/license/WonderfulClaire/cosmic-voyage?style=for-the-badge" alt="License: MIT"></a>
+  <a href="https://wonderfulclaire.github.io/cosmic-voyage/"><img src="https://img.shields.io/badge/%F0%9F%8C%8C_LIVE_DEMO-PLAY_NOW-8a2be2?style=for-the-badge" alt="Live Demo"></a>
+  <img src="https://img.shields.io/badge/Three.js-r160-000000?style=for-the-badge" alt="Built with Three.js">
+</p>
 
-> 灵感：把「自由开飞船 + 多个宇宙地点 + 交互式宇宙知识」三件事合在一起，做一个酷到能发朋友圈的东西。
+<h1 align="center">🚀 COSMIC VOYAGE</h1>
+<p align="center"><b>沉浸式宇宙旅行 · 自由开飞船 + 交互式宇宙科普</b></p>
+<p align="center">
+  <i>An immersive web-based space travel experience — pilot a spaceship freely through the cosmos and learn real astronomy as you fly.</i>
+</p>
 
-## ✨ 特性
+---
 
-- **第一人称飞船操控**：WASD 平移、鼠标转视角、Shift 引擎加速，自由飞行无重力束缚
-- **12 个真实宇宙地点**：地球 / 火星 / 木星 / 土星（带光环）/ 太阳 / 黑洞（吸积盘 shader）/ 猎户座大星云 / 仙女座星系 / 比邻星 b / 小行星带 / 脉冲星 / 蟹状星云
-- **靠近即学**：飞近天体自动提示，按 `E` 弹出该天体的中文科普卡片（含一句话速记 + 多条知识点）
-- **程序化视觉**：星空粒子、发光星云、土星环、黑洞吸积盘、脉冲星光束、辉光（Bloom）后处理，全部代码生成，无需任何外部素材
-- **零后端纯静态**：一个网页直接跑，方便部署到 GitHub Pages
+> **EN** A browser-based, zero-backend immersive space simulator built with Three.js. You wake up in orbit, pilot a spaceship with full 6-DOF freedom, roam among planets, black holes, nebulae and galaxies, and press **`E`** when near any celestial body to pop up a real, sourced astronomy card.
+>
+> **中文** 一个纯前端、零后端的沉浸式宇宙旅行 Web 应用。你在地球轨道醒来，驾驶飞船自由穿梭于行星、黑洞、星云与星系之间，**靠近任意天体按 `E` 即可弹出真实科普卡片**，边飞边长知识。
 
-## 🎮 操作
+🌌 **[▶ 在线体验 Live Demo](https://wonderfulclaire.github.io/cosmic-voyage/)** — 无需安装，点开即玩。
 
-| 按键 | 功能 |
-|------|------|
-| `W` / `S` | 前进 / 后退 |
-| `A` / `D` | 左移 / 右移 |
-| `空格` / `C` | 上升 / 下降 |
-| `鼠标` | 转动视角（先点击画面锁定指针） |
-| `Shift` | 引擎加速 |
-| `E` | 靠近天体时查看科普卡片 |
-| `H` | 开关操作帮助 |
-| `ESC` | 解除鼠标锁定 |
+---
 
-## ▶️ 运行
+## ✨ Features · 特性
 
-### 在线玩（部署后）
-访问 GitHub Pages 链接即可，无需安装。
+- 🕹️ **First-person spaceship piloting** — `WASD` translate, mouse look, `Shift` engine boost. Full 6-DOF free flight, no gravity constraints.
+   **第一人称飞船操控**：WASD 平移、鼠标转视角、Shift 加速，六自由度自由飞行，无重力束缚。
+- 🪐 **12 real cosmic destinations** — Earth, Mars, Jupiter, Saturn (with rings), the Sun, a black hole (accretion-disk shader), the Orion Nebula, Andromeda, Proxima b, the Asteroid Belt, a Pulsar, and the Crab Nebula.
+   **12 个真实宇宙地点**：地球 / 火星 / 木星 / 土星（带光环）/ 太阳 / 黑洞（吸积盘着色器）/ 猎户座大星云 / 仙女座星系 / 比邻星 b / 小行星带 / 脉冲星 / 蟹状星云。
+- 📖 **Learn-by-flying** — fly close to a body and a prompt appears; press `E` for a Chinese astronomy card (one-line memory hook + multiple facts).
+   **靠近即学**：飞近天体自动提示，按 `E` 弹出中文科普卡片（含一句话速记 + 多条知识点）。
+- 🎨 **Fully procedural visuals** — starfield particles, glowing nebulae, Saturn's rings, black-hole accretion disk, pulsar beams, and Bloom post-processing. **No external assets required.**
+   **程序化视觉**：星空粒子、发光星云、土星环、黑洞吸积盘、脉冲星光束、辉光后处理——全部代码生成，无需任何外部素材。
+- 📦 **Zero backend, pure static** — a single webpage runs anywhere; trivial to deploy on GitHub Pages.
+   **零后端纯静态**：一个网页直接跑，轻松部署到 GitHub Pages。
 
-### 本地运行
-因为用 ES Module + importmap，需通过本地服务器打开（不能直接双击 `file://`）：
+---
+
+## 🖼️ Gallery · 画面
+
+<p align="center">
+  <img src="assets/scene-saturn.png" alt="Near Saturn" width="48%">
+  <img src="assets/scene-blackhole.png" alt="Black hole" width="48%">
+</p>
+
+<p align="center"><i>Concept art — the in-app scenes are rendered live in WebGL.</i></p>
+
+---
+
+## 🎮 Controls · 操作
+
+| Key | Function · 功能 |
+|-----|-----------------|
+| `W` / `S` | Forward / Backward · 前进 / 后退 |
+| `A` / `D` | Strafe left / right · 左移 / 右移 |
+| `Space` / `C` | Ascend / Descend · 上升 / 下降 |
+| `Mouse` | Look around (click to lock pointer) · 转动视角（先点击画面锁定指针） |
+| `Shift` | Engine boost · 引擎加速 |
+| `E` | Open astronomy card when near a body · 靠近天体时查看科普卡片 |
+| `H` | Toggle help overlay · 开关操作帮助 |
+| `ESC` | Release mouse lock · 解除鼠标锁定 |
+
+---
+
+## ▶️ Run · 运行
+
+### 🌐 Online · 在线玩
+Just open the **[Live Demo](https://wonderfulclaire.github.io/cosmic-voyage/)** — no install needed.
+
+### 💻 Local · 本地运行
+Because it uses ES Modules + importmap, serve it over a local HTTP server (don't open `file://` directly):
 
 ```bash
 cd cosmic-voyage
 python3 -m http.server 8000
-# 浏览器打开 http://localhost:8000
+# then visit http://localhost:8000
 ```
 
-Three.js 通过 CDN（jsdelivr）加载，首次运行需联网。
-
-## 🛠️ 技术栈
-
-- [Three.js](https://threejs.org/) r160（CDN importmap）
-- EffectComposer + UnrealBloomPass（辉光后处理）
-- PointerLockControls（第一人称视角）
-- 程序化纹理（Canvas 2D）/ 程序化几何体 / GLSL 着色器（黑洞吸积盘）
-
-## 📁 结构
-
-```
-cosmic-voyage/
-├── index.html      # 页面骨架 + HUD / 卡片 DOM + importmap
-├── styles.css      # 座舱 HUD / 科普卡片样式
-├── main.js         # 场景、飞船控制、天体生成、交互逻辑
-├── knowledge.js    # 宇宙地点与科普数据（可自由增删地点）
-└── README.md
-```
-
-想加自己的星球？编辑 `knowledge.js` 的 `LOCATIONS` 数组即可。
+Three.js is loaded via CDN (jsDelivr), so the first run needs internet.
 
 ---
 
-Made with ❤️ for space & curiosity.
+## 🪐 Destinations · 宇宙地点一览
+
+| Location | Type | One-line hook |
+|----------|------|---------------|
+| Earth | Planet | Our pale blue dot — the only known world with life. |
+| Mars | Planet | The red planet, future home of human expeditions. |
+| Jupiter | Gas giant | The solar system's heaviest, with a 300-year-old storm. |
+| Saturn | Ringed giant | A planet famous for its spectacular ring system. |
+| Sun | Star | The 1.3-million-km fireball that powers everything here. |
+| Black Hole | Singularity | Where gravity wins so utterly that even light can't escape. |
+| Orion Nebula | Emission nebula | A stellar nursery 1,300 light-years away. |
+| Andromeda | Galaxy | Our galaxy's destined merger partner, 2.5 Mly away. |
+| Proxima b | Exoplanet | The closest known world beyond the Sun. |
+| Asteroid Belt | Debris field | Leftover bricks from planet-building. |
+| Pulsar | Neutron star | A cosmic lighthouse spinning hundreds of times a second. |
+| Crab Nebula | Supernova remnant | The ashes of a star that exploded in 1054 AD. |
+
+> Want your own world? Edit the `LOCATIONS` array in [`knowledge.js`](knowledge.js) — add a name, position, color, and facts. That's it.
+
+---
+
+## 🛠️ Tech Stack · 技术栈
+
+- [Three.js](https://threejs.org/) r160 (via CDN importmap)
+- `EffectComposer` + `UnrealBloomPass` — bloom post-processing
+- `PointerLockControls` — first-person camera
+- Procedural textures (Canvas 2D) / geometry / GLSL shaders (black-hole disk)
+
+---
+
+## 📁 Structure · 项目结构
+
+```
+cosmic-voyage/
+├── assets/         # README banner & concept art
+├── index.html      # page skeleton + HUD / card DOM + importmap
+├── styles.css      # cockpit HUD / astronomy-card styles
+├── main.js         # scene, ship controls, celestial bodies, interaction
+├── knowledge.js    # cosmic locations & astronomy data (edit to add worlds)
+├── README.md
+└── LICENSE
+```
+
+---
+
+## 🗺️ Roadmap · 路线规划
+
+- [ ] More destinations (exoplanet systems, the Moon, ISS)
+- [ ] Localized UI (English / 中文 switch)
+- [ ] Ambient space audio & engine sound
+- [ ] Save / share flight paths
+- [ ] Mobile & gamepad support
+- [ ] Quiz mode — test what you learned while flying
+
+---
+
+## 🤝 Contributing · 贡献
+
+PRs and ideas are welcome! Whether it's a new celestial body, a bug fix, or a cooler shader — open an issue or a pull request. Let's make space more fun to explore. 🚀
+
+---
+
+## ❤️ Acknowledgements
+
+Made with curiosity for space and the joy of learning. Built with [Three.js](https://threejs.org/).
+
+---
+
+## 📄 License · 许可证
+
+[MIT](LICENSE) © WonderfulClaire
