@@ -25,10 +25,26 @@ camera.lookAt(0, 0, 0);
 /* ---------------- 控制器（第一人称飞船） ---------------- */
 const controls = new PointerLockControls(camera, document.body);
 const blocker = document.getElementById('blocker');
-const promptEl = document.getElementById('prompt');
-blocker.addEventListener('click', () => controls.lock());
-controls.addEventListener('lock', () => { blocker.style.display = 'none'; });
-controls.addEventListener('unlock', () => { blocker.style.display = 'flex'; });
+
+// ---- 任务状态机 ----
+let gameState = 'intro';          // intro | countdown | flying | paused | returning
+let fovTarget = 72;               // 相机 FOV 缓动目标（发射拉伸 / 返航收缩）
+const visited = new Set();        // 已查看科普的地点（去重）
+let totalDist = 0;                // 累计飞行距离（u）
+let missionStart = 0;             // 发射时刻（performance.now）
+
+controls.addEventListener('lock', () => {
+  blocker.style.display = 'none';
+  if (gameState === 'paused') { gameState = 'flying'; hidePause(); }
+});
+controls.addEventListener('unlock', () => {
+  if (gameState === 'flying') { gameState = 'paused'; showPause(); }
+  else if (gameState === 'countdown') {            // 倒计时中误按 ESC：回到开场
+    gameState = 'intro';
+    document.getElementById('launch').style.display = 'none';
+    blocker.style.display = 'flex';
+  }
+});
 
 /* ---------------- 灯光 ---------------- */
 scene.add(new THREE.AmbientLight(0x334455, 0.55));
@@ -282,6 +298,7 @@ addEventListener('keydown', e => {
   keys[e.code] = true;
   if (e.code === 'KeyE') toggleCard();
   if (e.code === 'KeyH') toggleHelp();
+  if (e.code === 'KeyR') triggerReturn();
 });
 addEventListener('keyup', e => { keys[e.code] = false; });
 
@@ -333,6 +350,7 @@ function toggleCard() {
   cardTitle.textContent = f.title;
   cardTldr.textContent = f.tldr;
   cardPoints.innerHTML = f.points.map(p => `<li>${p}</li>`).join('');
+  visited.add(nearest.name);          // 记录探索足迹
   card.style.display = 'flex';
 }
 document.getElementById('card-close').addEventListener('click', () => card.style.display = 'none');
@@ -459,6 +477,88 @@ function updateEdgeMarkers() {
   }
 }
 
+/* ---------------- 发射 / 返航仪式 ---------------- */
+const launchEl = document.getElementById('launch');
+const launchNum = document.getElementById('launch-num');
+const launchSub = document.getElementById('launch-sub');
+const missionPause = document.getElementById('mission-pause');
+const missionReturn = document.getElementById('mission-return');
+const mrStats = document.getElementById('mr-stats');
+const mrList = document.getElementById('mr-list');
+
+document.getElementById('btn-launch').addEventListener('click', startCountdown);
+document.getElementById('btn-resume').addEventListener('click', () => controls.lock());
+document.getElementById('btn-return').addEventListener('click', triggerReturn);
+document.getElementById('btn-relaunch').addEventListener('click', () => { resetMission(); startCountdown(); });
+
+function startCountdown() {
+  if (gameState === 'countdown' || gameState === 'flying' || gameState === 'returning') return;
+  gameState = 'countdown';
+  blocker.style.display = 'none';
+  controls.lock();                              // 必须在用户手势内调用
+  launchEl.style.display = 'flex';
+  const seq = ['3', '2', '1', '🔥 点火'];
+  let i = 0;
+  const step = () => {
+    launchNum.textContent = seq[i];
+    launchNum.classList.remove('pop'); void launchNum.offsetWidth; launchNum.classList.add('pop');
+    launchSub.textContent = i < 3 ? '系统自检完成 · 准备点火' : '引擎全功率 · 出发！';
+    if (i < seq.length - 1) { i++; setTimeout(step, 800); }
+    else { doIgnition(); setTimeout(() => { launchEl.style.display = 'none'; }, 1300); }
+  };
+  step();
+}
+
+function doIgnition() {
+  gameState = 'flying';
+  missionStart = performance.now();
+  totalDist = 0;
+  camera.getWorldDirection(tmp.fwd);
+  velocity.copy(tmp.fwd).multiplyScalar(1700);  // 起步前冲脉冲
+  fovTarget = 108;                              // 相机拉伸（加速感）
+  document.body.classList.add('launching');
+  setTimeout(() => { document.body.classList.remove('launching'); fovTarget = 72; }, 1600);
+}
+
+function triggerReturn() {
+  if (gameState !== 'flying' && gameState !== 'paused') return;
+  gameState = 'returning';
+  controls.unlock();
+  fovTarget = 56;                               // 相机收缩（减速入站感）
+  document.body.classList.add('returning');
+  setTimeout(() => {
+    document.body.classList.remove('returning');
+    fovTarget = 72;
+    showReturn();
+  }, 1800);
+}
+
+function showReturn() {
+  const dur = Math.max(1, Math.round((performance.now() - missionStart) / 1000));
+  mrStats.innerHTML = `
+    <div class="mr-stat"><span>${dur}</span><label>飞行时长 / 秒</label></div>
+    <div class="mr-stat"><span>${visited.size}<small>/${LOCATIONS.length}</small></span><label>探索地点</label></div>
+    <div class="mr-stat"><span>${Math.round(totalDist)}</span><label>飞行距离 / u</label></div>`;
+  mrList.innerHTML = visited.size
+    ? [...visited].map(n => `<span class="mr-badge">${n}</span>`).join('')
+    : '<div class="mr-empty">这次还没靠近任何天体，下次飞近按 E 看看吧 ✨</div>';
+  missionReturn.style.display = 'flex';
+}
+
+function showPause() { missionPause.style.display = 'flex'; }
+function hidePause() { missionPause.style.display = 'none'; }
+function hideReturn() { missionReturn.style.display = 'none'; }
+
+function resetMission() {
+  camera.position.set(3450, 220, 520);
+  camera.lookAt(0, 0, 0);
+  velocity.set(0, 0, 0);
+  visited.clear();
+  totalDist = 0;
+  fovTarget = 72; camera.fov = 72; camera.updateProjectionMatrix();
+  hideReturn();
+}
+
 /* ---------------- 飞行 ---------------- */
 const velocity = new THREE.Vector3();
 const maxSpeed = 700;
@@ -468,7 +568,10 @@ const clock = new THREE.Clock();
 function animate() {
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), 0.05);
-  if (controls.isLocked) {
+  // 相机 FOV 缓动（发射拉伸 / 返航收缩）
+  camera.fov += (fovTarget - camera.fov) * Math.min(1, dt * 6);
+  camera.updateProjectionMatrix();
+  if (controls.isLocked && gameState === 'flying') {
     camera.getWorldDirection(tmp.fwd);
     tmp.right.crossVectors(tmp.fwd, camera.up).normalize();
     tmp.up.crossVectors(tmp.right, tmp.fwd).normalize();
@@ -484,6 +587,7 @@ function animate() {
     tmp.target.copy(tmp.accel).multiplyScalar(maxSpeed * boost);
     velocity.lerp(tmp.target, 1 - Math.pow(0.0008, dt));
     camera.position.addScaledVector(velocity, dt);
+    totalDist += velocity.length() * dt;
   }
   for (const L of LOCATIONS) if (L._diskMat) L._diskMat.uniforms.uTime.value += dt;
   composer.render();
