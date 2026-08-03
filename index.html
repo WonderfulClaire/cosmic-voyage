@@ -32,6 +32,7 @@
     </div>
 
     <div id="hud-top-right">
+      <div id="hud-zone">◈ 太阳系 · Solar System</div>
       <div id="hud-target">最近 · —</div>
       <div id="hud-hint">按 E 查看科普</div>
     </div>
@@ -44,6 +45,8 @@
       <div><b>鼠标</b> 转动视角（点击画面锁定）</div>
       <div><b>Shift</b> 引擎加速</div>
       <div><b>E</b> 靠近天体查看科普</div>
+      <div><b>G</b> 星图航图 · 跃迁到六大区域</div>
+      <div><b>B</b> 宇宙图鉴 · 查看探索进度</div>
       <div><b>星图雷达</b> 右下角小地图 + 边缘箭头指引方向</div>
       <div><b>R</b> 结束任务 · 返航结算</div>
       <div><b>ESC</b> 暂停任务</div>
@@ -85,6 +88,8 @@
         <div>🕹 <b>W / A / S / D</b> 驾驶 · <b>鼠标</b> 转向 · <b>Shift</b> 加速</div>
         <div>🛰 飞近发光天体按 <b>E</b> 解锁宇宙知识</div>
         <div>🧭 右下角星图雷达 + 边缘箭头帮你导航</div>
+        <div>🗺 按 <b>G</b> 打开星图航图，一键跃迁到六大宇宙区域</div>
+        <div>📖 按 <b>B</b> 打开宇宙图鉴，查看你探索了多少天体</div>
         <div>⌨ <b>R</b> 随时结束任务 · 返航结算 · <b>ESC</b> 暂停</div>
       </div>
       <button id="btn-launch">🚀 启动引擎 · 准备发射</button>
@@ -115,6 +120,27 @@
       <button id="btn-relaunch">🚀 再次发射</button>
     </div>
   </div>
+
+  <!-- 星图航图（区域跃迁） -->
+  <div id="starchart">
+    <div class="sc-inner">
+      <div class="sc-head">🛰 星图航图 · 选择跃迁区域</div>
+      <div id="sc-grid"></div>
+      <div class="sc-tip">点击区域卡片，飞船将跃迁至该区域的观察点 · 按 G 关闭</div>
+    </div>
+  </div>
+
+  <!-- 宇宙图鉴 -->
+  <div id="codex">
+    <div class="cx-inner">
+      <div class="cx-head">📖 宇宙图鉴 · 探索进度</div>
+      <div id="codex-body"></div>
+      <div class="cx-tip">按 B 关闭</div>
+    </div>
+  </div>
+
+  <!-- 区域进入横幅 -->
+  <div id="zone-banner"></div>
 
   <script type="module" src="main.js"></script>
 </body>
