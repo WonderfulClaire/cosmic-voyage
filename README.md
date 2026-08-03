@@ -30,8 +30,8 @@
 
 - 🕹️ **First-person spaceship piloting** — `WASD` translate, mouse look, `Shift` engine boost. Full 6-DOF free flight, no gravity constraints.
    **第一人称飞船操控**：WASD 平移、鼠标转视角、Shift 加速，六自由度自由飞行，无重力束缚。
-- 🪐 **The whole universe, 6 zones × 40 real bodies** — from the Solar System all the way to the edge of the observable universe: planets, moons, dwarf planets, the Sun, asteroids & comets; nearby exoplanet systems (Proxima b, TRAPPIST-1e, Kepler-452b, hot Jupiters, red dwarfs); nebulae & stellar remnants (Orion, Crab, Eagle/Pillars of Creation, Rosette, Helix, SN 1987A, red giants, white dwarfs); compact extremes (black hole, pulsar, neutron-star binary, magnetar); the Galaxy (Sgr A\*, globular & open clusters, Magellanic Clouds); and the deep universe (Andromeda, Triangulum, Sombrero, a quasar, and the Cosmic Microwave Background).
-   **整个宇宙 · 6 大区域 × 40 个真实天体**：从太阳系一路延伸到可观测宇宙边缘——行星 / 卫星 / 矮行星 / 太阳 / 小行星带 / 彗星；近邻系外星系（比邻星 b、TRAPPIST-1e、开普勒-452b、热木星、红矮星）；星云与恒星遗迹（猎户座、蟹状、创生之柱、玫瑰、螺旋、SN 1987A、红巨星、白矮星）；致密与极端（黑洞、脉冲星、双中子星、磁星）；银河系（人马座 A\*、球状/疏散星团、麦哲伦云）；宇宙深处（仙女座、三角座、草帽星系、类星体、宇宙微波背景）。
+- 🪐 **The whole universe, 8 zones × 53 real bodies** — from the Solar System all the way to the edge of the observable universe: planets, moons, dwarf planets, the Sun, asteroids & comets, plus a **meteorite collection**; nearby exoplanet systems (Proxima b, TRAPPIST-1e, Kepler-452b, hot Jupiters, red dwarfs); nebulae & stellar remnants (Orion, Crab, Eagle/Pillars of Creation, Rosette, Helix, SN 1987A, red giants, white dwarfs); compact extremes (black hole, pulsar, neutron-star binary, magnetar); the Galaxy (Sgr A\*, globular & open clusters, Magellanic Clouds); the deep universe (Andromeda, Triangulum, Sombrero, a quasar, and the Cosmic Microwave Background); **Human Exploration** (Tianhe core module, Chang'e 5, Yutu-2, Zhurong, Voyager 1, JWST, Hubble); and **Chinese Astronomy** (gnomon, armillary sphere, simplified instrument, Dengfeng observatory, 24 solar terms).
+   **整个宇宙 · 8 大区域 × 53 个真实天体**：从太阳系一路延伸到可观测宇宙边缘——行星 / 卫星 / 矮行星 / 太阳 / 小行星带 / 彗星 / 陨石藏品；近邻系外星系（比邻星 b、TRAPPIST-1e、开普勒-452b、热木星、红矮星）；星云与恒星遗迹（猎户座、蟹状、创生之柱、玫瑰、螺旋、SN 1987A、红巨星、白矮星）；致密与极端（黑洞、脉冲星、双中子星、磁星）；银河系（人马座 A\*、球状/疏散星团、麦哲伦云）；宇宙深处（仙女座、三角座、草帽星系、类星体、宇宙微波背景）；**征程·人类探索**（天和核心舱、嫦娥五号、玉兔二号、祝融号、旅行者1号、韦伯、哈勃）；**中华问天**（圭表、浑仪、简仪、登封观星台、二十四节气）。
 - 📖 **Learn-by-flying** — fly close to a body and a prompt appears; press `E` for a Chinese astronomy card (one-line memory hook + multiple facts).
    **靠近即学**：飞近天体自动提示，按 `E` 弹出中文科普卡片（含一句话速记 + 多条知识点）。
 - 🎨 **Fully procedural visuals** — starfield particles, glowing nebulae, Saturn's rings, black-hole accretion disk, pulsar beams, and Bloom post-processing. **No external assets required.**
@@ -42,8 +42,8 @@
    **游戏化 HUD**：右下角**星图雷达**（上北下南、玩家居中）显示每个地点的方位与类型配色；屏幕外的天体会在边缘弹出发光**方向箭头**并标注名字与距离，像 MOBA 小地图一样指路。
 - 🚀 **Launch & return ceremony** — press **「启动引擎」** for a `3-2-1-🔥点火` countdown with screen shake, warp-speed lines and a camera FOV stretch; press `R` (or ESC → 返航) to decelerate and get a **mission debrief**: flight time, destinations explored, distance travelled, and your footprints.
    **发射 / 返航仪式感**：点「启动引擎」触发 3-2-1-🔥点火 全屏倒计时（屏幕震动 + 曲速隧道 + 相机拉伸 + 起步冲刺）；飞行中按 `R`（或 ESC → 返航）减速收尾，弹出**任务结算**：飞行时长 / 探索地点数 / 飞行距离 / 探索足迹。
-- 🗺️ **Star-chart warp (G)** — open the **星图航图** to see all 6 cosmic zones and **warp** your ship to any zone's observation point in one click. Each arrival shows a zone-entry banner.
-   **星图航图（按 `G`）**：打开**星图航图**纵览六大宇宙区域，一键**跃迁**到任意区域的观察点，抵达时有「进入区域」横幅。
+- 🗺️ **Star-chart warp (G)** — open the **星图航图** to see all 8 cosmic zones and **warp** your ship to any zone's observation point in one click. Each arrival shows a zone-entry banner.
+   **星图航图（按 `G`）**：打开**星图航图**纵览八大宇宙区域，一键**跃迁**到任意区域的观察点，抵达时有「进入区域」横幅。
 - 📖 **Universe Codex (B)** — open the **宇宙图鉴** to track your exploration progress by zone and by object type (e.g. how many galaxies / nebulae you've visited).
    **宇宙图鉴（按 `B`）**：打开**宇宙图鉴**，按区域与天体类型统计你的探索进度（已访 / 总数）。
 
@@ -97,10 +97,10 @@ Three.js is loaded via CDN (jsDelivr), so the first run needs internet.
 
 ## 🪐 Destinations · 宇宙地点一览
 
-The universe is organised into **6 cosmic zones** — open the star-chart (`G`) to warp between them. Every body below has a real, sourced astronomy card (press `E` when nearby).
+The universe is organised into **8 cosmic zones** — open the star-chart (`G`) to warp between them. Every body below has a real, sourced astronomy card (press `E` when nearby).
 
 ### ☀️ 太阳系 · Solar System
-地球 · 月球 · 水星 · 金星 · 火星 · 木星 · 土星（环）· 天王星 · 海王星 · 冥王星（矮行星）· 谷神星（矮行星）· 小行星带 · 哈雷彗星
+地球 · 月球 · 水星 · 金星 · 火星 · 木星 · 土星（环）· 天王星 · 海王星 · 冥王星（矮行星）· 谷神星（矮行星）· 小行星带 · 哈雷彗星 · 陨石藏品
 
 ### 🛰 近邻恒星系 · Nearby Stars
 比邻星 b · TRAPPIST-1e · 开普勒-452b · 51 Pegasi b（热木星）· 巴纳德星（红矮星）
@@ -116,6 +116,12 @@ The universe is organised into **6 cosmic zones** — open the star-chart (`G`) 
 
 ### 🌠 宇宙深处 · Deep Universe
 仙女座星系 · 三角座星系 · 草帽星系 · 类星体 3C 273 · 宇宙微波背景
+
+### 🚀 征程·人类探索 · Human Exploration
+天和核心舱 · 嫦娥五号 · 玉兔二号 · 祝融号 · 旅行者1号 · 韦伯太空望远镜 · 哈勃太空望远镜
+
+### 📜 中华问天 · Chinese Astronomy
+圭表 · 浑仪 · 简仪 · 登封观星台 · 二十四节气
 
 > Want your own world? Edit the `LOCATIONS` array in [`knowledge.js`](knowledge.js) — add a name, position, color, and facts. That's it.
 
@@ -147,12 +153,13 @@ cosmic-voyage/
 
 ## 🗺️ Roadmap · 路线规划
 
-- [ ] More destinations (exoplanet systems, the Moon, ISS)
+- [x] More destinations — added **Human Exploration** (spacecraft) & **Chinese Astronomy** zones (53 bodies total)
 - [ ] Localized UI (English / 中文 switch)
 - [ ] Ambient space audio & engine sound
 - [ ] Save / share flight paths
 - [ ] Mobile & gamepad support
 - [ ] Quiz mode — test what you learned while flying
+- [ ] Physical exhibits (Foucault pendulum, meteorite crater) as interactive landmarks
 
 ---
 
