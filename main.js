@@ -321,6 +321,8 @@ function updateHUD() {
   } else {
     hudHint.style.display = 'none';
   }
+  drawMinimap();
+  updateEdgeMarkers();
 }
 function toggleHelp() { helpPanel.style.display = helpPanel.style.display === 'none' ? 'block' : 'none'; }
 function toggleCard() {
@@ -334,6 +336,128 @@ function toggleCard() {
   card.style.display = 'flex';
 }
 document.getElementById('card-close').addEventListener('click', () => card.style.display = 'none');
+
+/* ---------------- 星图雷达（小地图） + 边缘方向指示 ---------------- */
+const TYPE_COLORS = {
+  '恒星': '#ffcf6b', '黑洞': '#ff5a5a', '星云': '#c98bff', '星系': '#9b8bff',
+  '脉冲星': '#7fd4ff', '小行星带': '#cbb08a', '岩石行星': '#6fd0ff',
+  '气态巨行星': '#ffd9a3', '冰巨星': '#9be7ff', '矮行星': '#bfe3c0'
+};
+const typeColor = t => TYPE_COLORS[t] || '#7fd4ff';
+
+const minimap = document.getElementById('minimap');
+const mmCtx = minimap.getContext('2d');
+const MM_SIZE = 190, MM_R = 84, MM_CX = MM_SIZE / 2, MM_CY = MM_SIZE / 2;
+const RADAR_RANGE = 28000;                 // 雷达边缘对应的世界距离
+const mmScale = (MM_R - 6) / RADAR_RANGE;
+
+function drawMinimap() {
+  mmCtx.clearRect(0, 0, MM_SIZE, MM_SIZE);
+  mmCtx.fillStyle = 'rgba(4,12,28,0.88)';
+  mmCtx.beginPath(); mmCtx.arc(MM_CX, MM_CY, MM_R, 0, Math.PI * 2); mmCtx.fill();
+  mmCtx.strokeStyle = 'rgba(120,220,255,0.22)'; mmCtx.lineWidth = 1;
+  for (const r of [MM_R * 0.34, MM_R * 0.67, MM_R]) {
+    mmCtx.beginPath(); mmCtx.arc(MM_CX, MM_CY, r, 0, Math.PI * 2); mmCtx.stroke();
+  }
+  mmCtx.beginPath();
+  mmCtx.moveTo(MM_CX - MM_R, MM_CY); mmCtx.lineTo(MM_CX + MM_R, MM_CY);
+  mmCtx.moveTo(MM_CX, MM_CY - MM_R); mmCtx.lineTo(MM_CX, MM_CY + MM_R); mmCtx.stroke();
+
+  const px = camera.position.x, pz = camera.position.z;
+  for (const L of LOCATIONS) {
+    let sx = (L._pos.x - px) * mmScale;
+    let sy = (L._pos.z - pz) * mmScale;
+    const d = Math.hypot(sx, sy);
+    if (d > MM_R) { const k = (MM_R - 5) / d; sx *= k; sy *= k; }
+    const col = typeColor(L.type);
+    mmCtx.fillStyle = col;
+    const rad = (L.isStar || L.isBlackHole || L.isGalaxy) ? 4.2 : 3;
+    mmCtx.beginPath(); mmCtx.arc(MM_CX + sx, MM_CY + sy, rad, 0, Math.PI * 2); mmCtx.fill();
+    if (L.isStar || L.isBlackHole) {
+      mmCtx.globalAlpha = 0.5; mmCtx.strokeStyle = col;
+      mmCtx.beginPath(); mmCtx.arc(MM_CX + sx, MM_CY + sy, rad + 3.5, 0, Math.PI * 2); mmCtx.stroke();
+      mmCtx.globalAlpha = 1;
+    }
+  }
+
+  // 玩家朝向箭头（黄）
+  const fwd = new THREE.Vector3(); camera.getWorldDirection(fwd);
+  const hl = Math.hypot(fwd.x, fwd.z) || 1;
+  const ax = fwd.x / hl, az = fwd.z / hl;
+  mmCtx.strokeStyle = '#ffe27a'; mmCtx.lineWidth = 2.4;
+  mmCtx.beginPath(); mmCtx.moveTo(MM_CX, MM_CY);
+  mmCtx.lineTo(MM_CX + ax * 18, MM_CY + az * 18); mmCtx.stroke();
+  const ah = ax * 18, av = az * 18;
+  const perpX = -az, perpZ = ax;
+  mmCtx.beginPath();
+  mmCtx.moveTo(MM_CX + ah, MM_CY + av);
+  mmCtx.lineTo(MM_CX + ah * 0.45 + perpX * 6, MM_CY + av * 0.45 + perpZ * 6);
+  mmCtx.lineTo(MM_CX + ah * 0.45 - perpX * 6, MM_CY + av * 0.45 - perpZ * 6);
+  mmCtx.closePath(); mmCtx.fillStyle = '#ffe27a'; mmCtx.fill();
+  // 玩家点
+  mmCtx.fillStyle = '#ffffff';
+  mmCtx.beginPath(); mmCtx.arc(MM_CX, MM_CY, 3.2, 0, Math.PI * 2); mmCtx.fill();
+}
+
+// 边缘方向指示箭头池
+const edgeContainer = document.getElementById('edge-markers');
+const EDGE_POOL = [];
+const EDGE_MAX = 6;
+for (let i = 0; i < EDGE_MAX; i++) {
+  const el = document.createElement('div'); el.className = 'edge-marker'; el.style.display = 'none';
+  const arrow = document.createElement('div'); arrow.className = 'edge-arrow';
+  const label = document.createElement('div'); label.className = 'edge-label';
+  const dist = document.createElement('div'); dist.className = 'edge-dist';
+  el.append(arrow, label, dist);
+  edgeContainer.appendChild(el);
+  EDGE_POOL.push({ el, arrow, label, dist });
+}
+
+const _fwd = new THREE.Vector3(), _right = new THREE.Vector3(), _upv = new THREE.Vector3();
+function updateEdgeMarkers() {
+  camera.getWorldDirection(_fwd);                       // 朝向（前）
+  _right.crossVectors(_fwd, camera.up).normalize();    // 右
+  _upv.crossVectors(_right, _fwd).normalize();         // 上
+
+  const tanV = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  const tanH = tanV * camera.aspect;
+  const halfW = innerWidth / 2 - 96, halfH = innerHeight / 2 - 80;
+
+  // 收集 screen 外（或背后）的地点，按距离排序取最近 EDGE_MAX 个
+  const cand = [];
+  for (const L of LOCATIONS) {
+    const r = new THREE.Vector3().subVectors(L._pos, camera.position);
+    const f = r.dot(_fwd), x = r.dot(_right), y = r.dot(_upv);
+    if (f > 0 && Math.abs(x) < f * tanH && Math.abs(y) < f * tanV) continue; // 在屏幕内，跳过
+    const dist = camera.position.distanceTo(L._pos);
+    cand.push({ L, x, y, f, dist });
+  }
+  cand.sort((a, b) => a.dist - b.dist);
+  const use = cand.slice(0, EDGE_MAX);
+
+  for (let i = 0; i < EDGE_MAX; i++) {
+    const m = EDGE_POOL[i];
+    if (i >= use.length) { m.el.style.display = 'none'; continue; }
+    const c = use[i];
+    // 屏幕方向：x 右 / y 上。背后(f<=0)则反向，提示"转身"
+    let dx = c.x, dyUp = c.y;
+    if (c.f <= 0) { dx = -dx; dyUp = -dyUp; }
+    let dyDown = -dyUp;                                 // 转成屏幕像素（y 向下）
+    if (Math.abs(dx) < 1e-3 && Math.abs(dyDown) < 1e-3) { m.el.style.display = 'none'; continue; }
+    const tX = dx !== 0 ? halfW / Math.abs(dx) : Infinity;
+    const tY = dyDown !== 0 ? halfH / Math.abs(dyDown) : Infinity;
+    const t = Math.min(tX, tY);
+    const left = innerWidth / 2 + dx * t;
+    const top = innerHeight / 2 + dyDown * t;
+    const rot = Math.atan2(dyDown, dx) * 180 / Math.PI + 90; // 箭头默认朝上
+    m.el.style.left = left + 'px';
+    m.el.style.top = top + 'px';
+    m.arrow.style.transform = `rotate(${rot}deg)`;
+    m.label.textContent = c.L.name;
+    m.dist.textContent = Math.round(c.dist) + ' u';
+    m.el.style.display = 'flex';
+  }
+}
 
 /* ---------------- 飞行 ---------------- */
 const velocity = new THREE.Vector3();
