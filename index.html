@@ -43,9 +43,18 @@
       <div><b>鼠标</b> 转动视角（点击画面锁定）</div>
       <div><b>Shift</b> 引擎加速</div>
       <div><b>E</b> 靠近天体查看科普</div>
+      <div><b>星图雷达</b> 右下角小地图 + 边缘箭头指引方向</div>
       <div><b>H</b> 开关本帮助</div>
       <div class="help-tip">ESC 解除鼠标锁定 · 飞向发光的天体就能学到知识</div>
     </div>
+
+    <!-- 星图雷达 + 边缘方向指示 -->
+    <div id="minimap-wrap">
+      <div class="mm-title">星图雷达</div>
+      <canvas id="minimap" width="190" height="190"></canvas>
+      <div class="mm-foot">半径 28k · 上北下南</div>
+    </div>
+    <div id="edge-markers"></div>
   </div>
 
   <!-- 科普卡片 -->
