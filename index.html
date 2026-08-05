@@ -148,18 +148,34 @@
     </div>
   </div>
 
-  <!-- 远征目的地选择 -->
+  <!-- 远征目的地选择 · 剧情分支任务线 -->
   <div id="exp-dest">
     <div class="ed-inner">
-      <div class="ed-title">🚀 选择远征目的地</div>
-      <div class="ed-sub">从地球发射，开启一段真实的星球之旅 · 数据均为真实航天参数</div>
+      <div class="ed-title">🚀 选择你的任务线</div>
+      <div class="ed-sub">三条独立剧情 · 真实航天数据 · 每次出发都是新故事</div>
       <div class="ed-btns">
-        <button class="ed-btn" data-planet="mars">🔴 火星<br><span>奥林匹斯山 · 水手谷 · 重力 0.38g</span></button>
-        <button class="ed-btn" data-planet="moon">🌑 月球<br><span>阿波罗遗址 · 嫦娥落点 · 重力 1/6g</span></button>
+        <button class="ed-mission ed-ark" data-mission="ark">
+          <div class="ed-m-head">🚀 火星方舟</div>
+          <div class="ed-m-tag">🟠 殖民 · 第一批人类移民</div>
+          <div class="ed-m-body">2049。你是首批 12 名火星定居者之一。这次不是探索——是永久殖民。建基地、提水冰、造氧气，让人类成为多行星物种。</div>
+          <div class="ed-m-foot">→ 乌托邦平原 · 重力 0.38g</div>
+        </button>
+        <button class="ed-mission ed-life" data-mission="life">
+          <div class="ed-m-head">🧬 深海回响</div>
+          <div class="ed-m-tag">🟣 生命 · 疑似生物信号</div>
+          <div class="ed-m-body">2047。"洞察号"在火星地下 1.6 公里检测到每 11.3 小时重复一次的电磁信号。紧急飞往采样——如果是真的，人类将首次证明地球之外有生命。</div>
+          <div class="ed-m-foot">→ 耶泽罗陨石坑 · 钻探任务</div>
+        </button>
+        <button class="ed-mission ed-pathfinder" data-mission="pathfinder">
+          <div class="ed-m-head">🌙 曙光计划</div>
+          <div class="ed-m-tag">🟢 探路 · 月球中转站</div>
+          <div class="ed-m-body">2046。目的地是 40 光年外的 TRAPPIST-1e，但我们先要在月球建立中转站，作为深空航线的第一块跳板，验证月壤制氧和抗辐射生态舱。</div>
+          <div class="ed-m-foot">→ 静海基地 · 重力 1/6g</div>
+        </button>
       </div>
       <button id="btn-ed-close">返回</button>
     </div>
-  </div>
+</div>
 
   <!-- 任务暂停 -->
   <div id="mission-pause">
@@ -246,7 +262,7 @@
     <div class="pp-inner">
       <div class="pp-head">📮 寄回地球的明信片 · 已收集 <span id="ph-count">0</span> 张</div>
       <div id="photo-grid"></div>
-      <div class="pp-tip">在旅途中按 <b>P</b> 拍照，每张明信片都会自动寄回地球 · 点击「⬇ 下载」保存到本地 · 按 <b>L</b> 开关本相册</div>
+      <div class="pp-tip">在旅途中按 <b>P</b> 拍照，每张明信片都会自动寄回地球 · 点击「🔗 分享」可用微信/朋友圈/微博/任意 App 发送 · 「⬇ 下载」保存到本地 · 按 <b>L</b> 开关本相册</div>
       <button id="btn-ph-close">关闭 (L)</button>
     </div>
   </div>
