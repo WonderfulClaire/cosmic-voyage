@@ -120,6 +120,70 @@ body {
 @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.06); } }
 #prompt { display: none; }
 
+/* ---------- 开场宣传片 / 宇宙总览 ---------- */
+#cinematic {
+  position: fixed; inset: 0; z-index: 60; display: flex;
+  align-items: center; justify-content: center; overflow: hidden; cursor: default;
+  background: radial-gradient(circle at 50% 38%, rgba(10, 20, 48, 0.5), rgba(0, 0, 8, 0.93));
+}
+#cine-stars { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.cine-vignette { position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(circle at 50% 44%, transparent 38%, rgba(0, 0, 12, 0.7) 100%); }
+
+.cine-gate { position: relative; z-index: 2; text-align: center; padding: 20px; }
+.cine-logo {
+  font-size: clamp(36px, 7.5vw, 76px); font-weight: 900; letter-spacing: 8px;
+  background: linear-gradient(90deg, #7fd4ff, #c9e8ff, #ffe27a);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: logoGlow 4.5s ease-in-out infinite;
+}
+@keyframes logoGlow { 0%,100% { filter: drop-shadow(0 0 12px rgba(90,180,255,0.35)); } 50% { filter: drop-shadow(0 0 30px rgba(255,220,120,0.45)); } }
+.cine-logo-sub { margin-top: 14px; font-size: clamp(13px, 2vw, 18px); letter-spacing: 3px; color: #aecbe6; }
+.cine-start-btn {
+  margin-top: 42px; font-size: clamp(16px, 2.4vw, 22px); font-weight: 800; letter-spacing: 3px;
+  color: #06121f; border: none; cursor: pointer; padding: 16px 46px; border-radius: 40px;
+  background: linear-gradient(90deg, #7fd4ff, #4aa8ff); box-shadow: 0 0 34px rgba(70,170,255,0.55);
+  animation: pulse 2.2s infinite; transition: transform .15s;
+}
+.cine-start-btn:hover { transform: scale(1.06); }
+.cine-gate-tip { margin-top: 26px; font-size: 12px; letter-spacing: 1px; color: #7f97ad; }
+
+.cine-frame { position: relative; z-index: 2; width: min(1120px, 94vw); height: min(700px, 90vh);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.cine-stage { width: min(640px, 82vw); height: min(370px, 44vh); display: flex; align-items: center; justify-content: center; }
+.cine-stage svg { width: 100%; height: 100%; overflow: visible; }
+.cine-text { text-align: center; max-width: 780px; margin-top: 6px; padding: 0 16px; }
+.cine-chapter { font-size: 13px; letter-spacing: 6px; color: #7fd4ff; margin-bottom: 10px; text-transform: uppercase; }
+.cine-title { font-size: clamp(24px, 4.2vw, 42px); font-weight: 800; letter-spacing: 1px; margin: 0 0 16px;
+  background: linear-gradient(90deg, #7fd4ff, #ffe27a); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.cine-body { font-size: clamp(14px, 1.9vw, 18px); line-height: 2.05; color: #d2e4f4; }
+.cine-body b { color: #ffe27a; font-weight: 700; }
+.cine-body .hl { color: #9affd0; }
+.cine-foot { position: absolute; bottom: 18px; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.cine-dots { display: flex; gap: 11px; }
+.cine-dot { width: 9px; height: 9px; border-radius: 50%; background: rgba(150, 190, 230, 0.28); transition: all .3s; }
+.cine-dot.on { background: #7fd4ff; box-shadow: 0 0 10px rgba(120,210,255,0.9); transform: scale(1.25); }
+.cine-nav { display: flex; gap: 14px; }
+.cine-nav button { font-size: 14px; font-weight: 700; letter-spacing: 1px; color: #d6ecff; cursor: pointer;
+  background: rgba(20, 40, 70, 0.5); border: 1px solid rgba(120, 200, 255, 0.4); border-radius: 24px; padding: 9px 22px;
+  transition: all .15s; backdrop-filter: blur(4px); }
+.cine-nav button:hover { background: rgba(50, 110, 180, 0.6); transform: translateY(-1px); }
+.cine-skip { position: absolute; top: 14px; right: 18px; z-index: 3; font-size: 13px; letter-spacing: 1px; color: #b9d4ec;
+  background: rgba(15, 30, 55, 0.5); border: 1px solid rgba(120, 200, 255, 0.3); border-radius: 20px; padding: 7px 16px;
+  cursor: pointer; backdrop-filter: blur(4px); }
+.cine-skip:hover { color: #fff; border-color: rgba(120,200,255,0.6); }
+.cine-progress { position: absolute; left: 8%; right: 8%; bottom: 0; height: 3px; background: rgba(120, 180, 230, 0.15); border-radius: 3px; overflow: hidden; }
+.cine-progress i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #7fd4ff, #ffe27a); box-shadow: 0 0 8px rgba(120,210,255,0.8); }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes tw { 0%,100% { opacity: .35; } 50% { opacity: 1; } }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+.cine-stage svg .spin-g, .cine-stage svg .orbit-g { transform-box: view-box; }
+.cine-stage svg .spin-g { animation: spin 90s linear infinite; }
+.cine-stage svg .orbit-g { animation: spin var(--dur, 16s) linear infinite; }
+.cine-stage svg .tw { animation: tw 3.2s ease-in-out infinite; }
+.cine-anim { animation: fadeUp .8s ease both; }
+
 /* ---------- 星图雷达（小地图） ---------- */
 #minimap-wrap {
   position: absolute; right: 22px; bottom: 22px; width: 190px; text-align: center;
