@@ -78,6 +78,10 @@ function makePlanetTexture(baseHex, opts = {}) {
     ctx.fillStyle = `rgba(${col.r * 255 | 0},${col.g * 255 | 0},${col.b * 255 | 0},0.35)`;
     ctx.arc(x, y, r, 0, 7); ctx.fill();
   }
+  if (opts.iceCaps) {
+    ctx.fillStyle = 'rgba(245,250,255,0.92)';
+    ctx.fillRect(0, 0, 512, 26); ctx.fillRect(0, 230, 512, 26);
+  }
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
 }
 function makeStarTexture(hex) {
@@ -133,6 +137,142 @@ function makeTextSprite(text) {
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
   const m = new THREE.SpriteMaterial({ map: t, transparent: true, depthWrite: false, depthTest: false });
   return new THREE.Sprite(m);
+}
+
+/* ---------------- 逼真地球 / 行星大气 ---------------- */
+function makeEarthTexture() {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 512;
+  const ctx = c.getContext('2d');
+  const g = ctx.createLinearGradient(0, 0, 0, 512);
+  g.addColorStop(0, '#0b2c57'); g.addColorStop(0.5, '#0e4078'); g.addColorStop(1, '#0b2c57');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, 1024, 512);
+  // 大陆：若干绿/棕椭圆斑块，拼出“有陆地有海洋”的观感
+  const land = [
+    [180, 165, 150, 110, '#2f7d34'], [300, 250, 120, 92, '#3a8a3f'], [140, 330, 110, 80, '#6b8e3a'],
+    [520, 150, 140, 100, '#2f7d34'], [640, 260, 120, 90, '#7a8a3a'], [560, 360, 100, 70, '#5a7a34'],
+    [820, 180, 130, 95, '#2f7d34'], [905, 300, 110, 80, '#6b8e3a'], [760, 400, 90, 60, '#4a7a38'],
+    [420, 430, 80, 55, '#5a7a34'], [250, 420, 70, 50, '#4f7a34'],
+  ];
+  for (const [x, y, w, h, col] of land) {
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.ellipse(x, y, w, h, Math.random() * 0.4, 0, 7); ctx.fill();
+  }
+  // 沙漠/裸土点缀
+  ctx.fillStyle = 'rgba(205,175,115,0.45)';
+  for (let i = 0; i < 46; i++) {
+    const x = Math.random() * 1024, y = Math.random() * 512;
+    ctx.beginPath(); ctx.ellipse(x, y, 12 + Math.random() * 30, 8 + Math.random() * 20, 0, 0, 7); ctx.fill();
+  }
+  // 极冠（南北冰盖）
+  ctx.fillStyle = 'rgba(245,250,255,0.95)';
+  ctx.fillRect(0, 0, 1024, 34); ctx.fillRect(0, 478, 1024, 34);
+  ctx.fillStyle = 'rgba(245,250,255,0.6)';
+  ctx.beginPath(); ctx.ellipse(512, 34, 300, 28, 0, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(512, 478, 300, 28, 0, 0, 7); ctx.fill();
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+function makeCloudTexture() {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 512;
+  const ctx = c.getContext('2d');
+  ctx.clearRect(0, 0, 1024, 512);
+  for (let i = 0; i < 64; i++) {
+    const x = Math.random() * 1024, y = Math.random() * 512, r = 20 + Math.random() * 72;
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, 'rgba(255,255,255,0.85)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+function addAtmosphere(mesh, radius, colorHex) {
+  const geo = new THREE.SphereGeometry(radius * 1.03, 48, 48);
+  const mat = new THREE.ShaderMaterial({
+    side: THREE.BackSide, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
+    uniforms: { uColor: { value: new THREE.Color(colorHex) } },
+    vertexShader: `varying vec3 vN; void main(){ vN = normalize(normalMatrix * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
+    fragmentShader: `varying vec3 vN; uniform vec3 uColor; void main(){ float i = pow(max(0.0, 0.78 - dot(vN, vec3(0.0,0.0,1.0))), 3.0); gl_FragColor = vec4(uColor, clamp(i,0.0,1.0)*0.85); }`,
+  });
+  mesh.add(new THREE.Mesh(geo, mat));
+}
+
+/* ---------------- 银河系旋臂 ---------------- */
+function makeSpiralGalaxy(center, radius, colorHex, armCount) {
+  armCount = armCount || 4;
+  const grp = new THREE.Group();
+  const count = 16000;
+  const g = new THREE.BufferGeometry();
+  const pos = new Float32Array(count * 3), col = new Float32Array(count * 3);
+  const c = new THREE.Color(colorHex);
+  const turns = 2.4;
+  for (let i = 0; i < count; i++) {
+    const arm = i % armCount;
+    const t = Math.pow(Math.random(), 0.55);
+    const r = t * radius;
+    const baseAng = arm / armCount * Math.PI * 2;
+    const ang = baseAng + t * turns * Math.PI * 2 + (Math.random() - 0.5) * 0.55 * (1 - t);
+    const spread = (1 - t) * radius * 0.16 + Math.random() * radius * 0.04;
+    const x = Math.cos(ang) * r + (Math.random() - 0.5) * spread;
+    const z = Math.sin(ang) * r + (Math.random() - 0.5) * spread;
+    const y = (Math.random() - 0.5) * radius * 0.05 * (1 - t * 0.4);
+    pos[i * 3] = center.x + x; pos[i * 3 + 1] = center.y + y; pos[i * 3 + 2] = center.z + z;
+    const b = 0.55 + Math.random() * 0.45;
+    col[i * 3] = c.r * b; col[i * 3 + 1] = c.g * b; col[i * 3 + 2] = c.b * b;
+  }
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  const m = new THREE.PointsMaterial({ size: radius * 0.012, vertexColors: true, transparent: true, opacity: 0.92, depthWrite: false, blending: THREE.AdditiveBlending });
+  grp.add(new THREE.Points(g, m));
+  const bulge = makeGlowSprite(0xfff0c0, radius * 0.55); bulge.position.copy(center); grp.add(bulge);
+  return grp;
+}
+
+/* ---------------- 舱内模式（进入空间站） ---------------- */
+let interiorGroup = null, interiorActive = false, enterTarget = null;
+const exteriorCamPos = new THREE.Vector3(), exteriorCamQuat = new THREE.Quaternion();
+function buildInterior() {
+  const grp = new THREE.Group();
+  const wallMat = new THREE.MeshStandardMaterial({ color: 0xc2cbd4, metalness: 0.55, roughness: 0.5, side: THREE.BackSide });
+  const wall = new THREE.Mesh(new THREE.CylinderGeometry(720, 720, 1500, 44, 1, true), wallMat);
+  wall.rotation.x = Math.PI / 2; grp.add(wall);
+  const fcMat = new THREE.MeshStandardMaterial({ color: 0x707a86, metalness: 0.4, roughness: 0.7, side: THREE.DoubleSide });
+  const floor = new THREE.Mesh(new THREE.CircleGeometry(720, 44), fcMat); floor.rotation.x = -Math.PI / 2; floor.position.z = 750; grp.add(floor);
+  const ceil = new THREE.Mesh(new THREE.CircleGeometry(720, 44), fcMat); ceil.rotation.x = Math.PI / 2; ceil.position.z = -750; grp.add(ceil);
+  const frame = new THREE.Mesh(new THREE.TorusGeometry(380, 46, 16, 56), new THREE.MeshStandardMaterial({ color: 0x39414f, metalness: 0.7, roughness: 0.4 }));
+  frame.position.z = 750; grp.add(frame);
+  const glass = new THREE.Mesh(new THREE.CircleGeometry(380, 44), new THREE.MeshBasicMaterial({ color: 0x9ec9ff, transparent: true, opacity: 0.12, side: THREE.DoubleSide }));
+  glass.position.z = 746; grp.add(glass);
+  const panelMat = new THREE.MeshStandardMaterial({ color: 0x0e1622, emissive: 0x1f7fe0, emissiveIntensity: 0.7, metalness: 0.3, roughness: 0.5 });
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2 + 0.4;
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(440, 260, 28), panelMat);
+    panel.position.set(Math.cos(a) * 660, Math.sin(a) * 660, -150);
+    panel.lookAt(0, 0, -150); grp.add(panel);
+  }
+  const lamp = new THREE.PointLight(0xffffff, 1.4, 4000, 2); lamp.position.set(0, 0, 0); grp.add(lamp);
+  return grp;
+}
+function enterCraft(L) {
+  if (!interiorGroup) interiorGroup = buildInterior();
+  interiorActive = true;
+  exteriorCamPos.copy(camera.position);
+  exteriorCamQuat.copy(camera.quaternion);
+  if (L._mesh) L._mesh.visible = false;
+  interiorGroup.position.copy(L._pos);
+  scene.add(interiorGroup);
+  camera.position.copy(L._pos).add(new THREE.Vector3(0, 0, -260));
+  camera.lookAt(L._pos.x, L._pos.y, L._pos.z + 1200);
+  updateEnterPrompt();
+}
+function exitCraft() {
+  if (interiorGroup) scene.remove(interiorGroup);
+  if (enterTarget && enterTarget._mesh) enterTarget._mesh.visible = true;
+  camera.position.copy(exteriorCamPos);
+  camera.quaternion.copy(exteriorCamQuat);
+  interiorActive = false;
+  updateEnterPrompt();
+}
+function toggleInterior() {
+  if (interiorActive) exitCraft();
+  else if (enterTarget) enterCraft(enterTarget);
 }
 
 /* ---------------- 星空 ---------------- */
@@ -414,11 +554,37 @@ function buildLocations() {
       const glow = makeGlowSprite(L.accent, L.radius * 4); grp.add(glow);
       grp.position.copy(p); scene.add(grp); L._mesh = grp; L._spin = grp;
 
+    } else if (L.isEarth) {
+      const surf = new THREE.Mesh(
+        new THREE.SphereGeometry(L.radius, 64, 64),
+        new THREE.MeshStandardMaterial({ map: makeEarthTexture(), roughness: 0.85, metalness: 0.0 })
+      );
+      const clouds = new THREE.Mesh(
+        new THREE.SphereGeometry(L.radius * 1.02, 48, 48),
+        new THREE.MeshStandardMaterial({ map: makeCloudTexture(), transparent: true, opacity: 0.5, depthWrite: false })
+      );
+      surf.add(clouds); L._clouds = clouds;
+      addAtmosphere(surf, L.radius, 0x6db4ff);
+      surf.position.copy(p); scene.add(surf); L._mesh = surf;
+
+    } else if (L.isSpiral) {
+      const sp = makeSpiralGalaxy(p, L.radius, L.color, 4);
+      scene.add(sp); L._mesh = sp;
+      const core = makeGlowSprite(L.accent, L.radius * 0.4); core.position.copy(p); scene.add(core);
+
+    } else if (L.isBubble) {
+      const shell = new THREE.Mesh(
+        new THREE.SphereGeometry(L.radius, 32, 32),
+        new THREE.MeshBasicMaterial({ color: L.color, transparent: true, opacity: 0.15, blending: THREE.AdditiveBlending, depthWrite: false })
+      );
+      shell.position.copy(p); scene.add(shell); L._mesh = shell;
+      const rim = makeGlowSprite(L.accent, L.radius * 2.2); rim.position.copy(p); scene.add(rim);
+
     } else {
       // 行星 / 卫星 / 矮行星 默认
       const mesh = new THREE.Mesh(
         new THREE.SphereGeometry(L.radius, 48, 48),
-        new THREE.MeshStandardMaterial({ map: makePlanetTexture(L.color, { bands: L.id === 'jupiter' ? 11 : 6, spots: 50 }), roughness: 1, metalness: 0 })
+        new THREE.MeshStandardMaterial({ map: makePlanetTexture(L.color, { bands: L.id === 'jupiter' ? 11 : 6, spots: 50, iceCaps: L.id === 'mars' }), roughness: 1, metalness: 0 })
       );
       if (L.ring) {
         const ring = new THREE.Mesh(
@@ -452,6 +618,9 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyR') triggerReturn();
   if (e.code === 'KeyG') toggleStarChart();
   if (e.code === 'KeyB') toggleCodex();
+  if (e.code === 'KeyF') toggleInterior();
+  if (e.code === 'BracketLeft') cycleGear(-1);
+  if (e.code === 'BracketRight') cycleGear(1);
 });
 addEventListener('keyup', e => { keys[e.code] = false; });
 
@@ -461,7 +630,15 @@ const hudPos = document.getElementById('hud-pos');
 const hudTarget = document.getElementById('hud-target');
 const hudHint = document.getElementById('hud-hint');
 const hudZone = document.getElementById('hud-zone');
+const hudGear = document.getElementById('hud-gear');
+const enterPrompt = document.getElementById('enter-prompt');
 const helpPanel = document.getElementById('help');
+function updateEnterPrompt() {
+  if (!enterPrompt) return;
+  if (interiorActive) { enterPrompt.style.display = 'flex'; enterPrompt.textContent = '🛰 已进入舱内 · 按 F 离开'; }
+  else if (enterTarget) { enterPrompt.style.display = 'flex'; enterPrompt.textContent = `🛰 按 F 进入「${enterTarget.name}」舱内`; }
+  else { enterPrompt.style.display = 'none'; }
+}
 const card = document.getElementById('card');
 const cardTitle = document.getElementById('card-title');
 const cardTldr = document.getElementById('card-tldr');
@@ -491,6 +668,7 @@ function updateHUD() {
 
   const v = velocity.length();
   hudSpeed.textContent = `速度 ${Math.round(v)} u/s`;
+  hudGear.textContent = `档位 ${SPEED_GEARS[gearIndex].name}`;
   hudPos.textContent = `坐标 ${Math.round(camera.position.x)}, ${Math.round(camera.position.y)}, ${Math.round(camera.position.z)}`;
   // nearest（仅当前区域）
   let best = null, bestD = Infinity;
@@ -511,6 +689,14 @@ function updateHUD() {
     hudTarget.textContent = `最近 · —`;
     hudHint.style.display = 'none';
   }
+  // 可进入的航天器提示
+  enterTarget = null;
+  if (!interiorActive) {
+    for (const L of LOCATIONS) {
+      if (L.enter && camera.position.distanceTo(L._pos) < L.radius * 1.5 + 700) { enterTarget = L; break; }
+    }
+  }
+  updateEnterPrompt();
   drawMinimap();
   updateEdgeMarkers();
 }
@@ -539,7 +725,9 @@ const TYPE_COLORS = {
   '超新星遗迹': '#ff8844', '系外行星': '#8fd0a0', '热木星': '#ffb070',
   '红矮星': '#ff7a5a', '宇宙背景辐射': '#7fa0c8', '星系中心黑洞': '#ffaa33', '矮星系': '#ffd9a0',
   '空间站': '#ffd24a', '探测器': '#9fe0ff', '月球车': '#ffd9a0', '火星车': '#ff8a5a',
-  '太空望远镜': '#c9d4ff', '古代天文仪器': '#e8c45a', '古代天文台': '#d8b85a', '历法体系': '#a0e0a0', '陨石藏品': '#cbb08a'
+  '太空望远镜': '#c9d4ff', '古代天文仪器': '#e8c45a', '古代天文台': '#d8b85a', '历法体系': '#a0e0a0', '陨石藏品': '#cbb08a',
+  '宜居带': '#6fe0c0', '德雷克方程': '#8fb8ff', '费米悖论': '#ff9a6b', '生物标记': '#9affc8', 'SETI': '#9fd4ff',
+  '地下海洋卫星': '#cfe8ff', '超级地球': '#bcd6ff', '多世界诠释': '#9b8bff', '暴胀泡泡宇宙': '#7fd4ff', '膜宇宙': '#ff9ad6'
 };
 const typeColor = t => TYPE_COLORS[t] || '#7fd4ff';
 
@@ -832,6 +1020,17 @@ function resetMission() {
 /* ---------------- 飞行 ---------------- */
 const velocity = new THREE.Vector3();
 const maxSpeed = 700;
+const SPEED_GEARS = [
+  { name: '滑行', mult: 0.22 },
+  { name: '巡航', mult: 0.6 },
+  { name: '标准', mult: 1.0 },
+  { name: '加速', mult: 2.4 },
+  { name: '跃迁', mult: 5.5 },
+];
+let gearIndex = 2;
+function cycleGear(dir) {
+  gearIndex = Math.max(0, Math.min(SPEED_GEARS.length - 1, gearIndex + dir));
+}
 const tmp = { fwd: new THREE.Vector3(), right: new THREE.Vector3(), up: new THREE.Vector3(), accel: new THREE.Vector3(), target: new THREE.Vector3() };
 const clock = new THREE.Clock();
 
@@ -849,7 +1048,7 @@ function animate() {
       flyTo = null;
       showZoneBanner(currentZone);
     }
-  } else if (controls.isLocked && gameState === 'flying') {
+  } else if (controls.isLocked && gameState === 'flying' && !interiorActive) {
     camera.getWorldDirection(tmp.fwd);
     tmp.right.crossVectors(tmp.fwd, camera.up).normalize();
     tmp.up.crossVectors(tmp.right, tmp.fwd).normalize();
@@ -860,9 +1059,9 @@ function animate() {
     if (keys['KeyA']) tmp.accel.sub(tmp.right);
     if (keys['Space']) tmp.accel.add(tmp.up);
     if (keys['KeyC'] || keys['ControlLeft']) tmp.accel.sub(tmp.up);
-    const boost = (keys['ShiftLeft'] || keys['ShiftRight']) ? 3.2 : 1;
+    const gear = SPEED_GEARS[gearIndex].mult;
     if (tmp.accel.lengthSq() > 0) tmp.accel.normalize();
-    tmp.target.copy(tmp.accel).multiplyScalar(maxSpeed * boost);
+    tmp.target.copy(tmp.accel).multiplyScalar(maxSpeed * gear);
     velocity.lerp(tmp.target, 1 - Math.pow(0.0008, dt));
     camera.position.addScaledVector(velocity, dt);
     totalDist += velocity.length() * dt;
@@ -872,6 +1071,7 @@ function animate() {
     if (L._diskMat) L._diskMat.uniforms.uTime.value += dt;
     if (L._pulse) { const s = 1 + 0.03 * Math.sin(performance.now() * 0.001 + L._pulse); L._mesh.scale.setScalar(s); }
     if (L._spin) L._spin.rotation.y += dt * 0.3;
+    if (L._clouds) L._clouds.rotation.y += dt * 0.02;
   }
   composer.render();
   updateHUD();
