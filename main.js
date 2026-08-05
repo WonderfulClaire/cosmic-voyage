@@ -1455,6 +1455,51 @@ animate();
         → 进入目标大气/悬停 → 着陆 → 地表自由探索(成就 + 拍照明信片)
    支持的目的地由 PLANETS 配置驱动（火星 / 月球 …）
    ===================================================================== */
+// 剧情分支任务线：3 条独立的故事线，共享同一发射-着陆流程
+const EXPEDITIONS = {
+  ark: {
+    id: 'ark', tag: '🟠 殖民 · 第一批人类移民', name: '火星方舟', sub: 'Mars Ark',
+    planet: 'mars', icon: '🚀', accent: '#ff9a5a',
+    intro: `<p style="color:#ffd66b;font-weight:700;font-size:17px;margin-top:0">📅 公元 2049 · 火星方舟计划</p>
+<p>你被选为 <b>首批 12 名火星定居者</b> 之一。这次任务不再是"探索"——是<b>永久殖民</b>。你的任务：在乌托邦平原建立火星一号基地，部署居住舱、太阳能阵列、水冰提炼装置。</p>
+<p>同行的是 <b>祝融二号</b> 着陆器、<b>毅力号</b> 升级版火星车，以及 23 吨补给。<b>氧气从大气中提取，燃料就地取材</b>——这是人类成为多行星物种的起点。</p>
+<p style="color:#9affd0">本程为真实数据：火星方舟计划由 SpaceX 推进，预计 2030s 首飞。你将用 7 分钟着陆、走 1.6 亿公里、花 7 个月到达。</p>`,
+    story: [
+      { at: 400,  title: '🟠 火星方舟 · 殖民启动', desc: '7 个月的航程即将开始。前方是那颗你即将永久居住的星球。' },
+      { at: 10000, title: '🔶 接近火星轨道', desc: '从窗口望去，火星如一枚红铜硬币。你即将开始人类历史上最重要的减速——进入火星轨道。' },
+    ],
+    conclusion: '🌟 任务完成 · 火星一号基地正式奠基。地球人，终于成为多行星物种。',
+  },
+  life: {
+    id: 'life', tag: '🟣 生命 · 疑似生物信号', name: '深海回响', sub: 'Deep Sea Echo',
+    planet: 'mars', icon: '🧬', accent: '#c66bff',
+    intro: `<p style="color:#c66bff;font-weight:700;font-size:17px;margin-top:0">📅 公元 2047 · 火星生命探测 · 最高优先级</p>
+<p>3 天前，"洞察号"在火星地下 <b>1.6 公里</b> 深处检测到一组<b>异常电磁信号</b>：每 <b>11.3 小时</b> 重复一次，温度越高信号越强——地球上，这意味着<b>地下热液生态系统</b>。</p>
+<p>你的任务：紧急飞往火星，钻探取样，确认信号是否来自<b>现存生命</b>。如果这是真的——人类将<b>第一次证明地球之外有生命</b>。</p>
+<p>同行的科学载荷价值 <b>27 亿美元</b>。成败将改写人类世界观。</p>
+<p style="color:#9affd0">本程为基于真实 NASA/ESA 火星生命探测任务的虚构推演。地球微生物极端环境证据：地下 1.6km 仍可存活。</p>`,
+    story: [
+      { at: 400,  title: '🧬 深海回响 · 生命信号确认', desc: '我们正飞向那颗可能藏着第二种生命的星球。' },
+      { at: 10000, title: '🔬 接近火星 · 信号源定位', desc: '信号来自耶泽罗陨石坑下方——曾经的河流三角洲，如今被沉积岩深埋。' },
+    ],
+    conclusion: '🔬 钻探成功 · 样本已封存返回地球。如果回响来自生命——教科书今夜要改写。',
+  },
+  pathfinder: {
+    id: 'pathfinder', tag: '🟢 探路 · 月球中转站', name: '曙光计划', sub: 'Dawn',
+    planet: 'moon', icon: '🌙', accent: '#7adcff',
+    intro: `<p style="color:#7adcff;font-weight:700;font-size:17px;margin-top:0">📅 公元 2046 · 曙光计划 · 月球中转站</p>
+<p>目的地是 <b>40 光年外</b> 的 TRAPPIST-1e——已知最具地球相似度的系外行星。但我们先要建立<b>月球中转站</b>，作为深空航线补给点。</p>
+<p>你的任务：在<b>静海基地</b>部署 <b>L2 拉格朗日点推进剂库</b>的预制件，验证 <b>ISRU（月壤制氧）</b> 工艺，测试 <b>抗宇宙辐射生态舱</b>。这是人类走向深空的<b>第一块跳板</b>。</p>
+<p>同行的是 <b>嫦娥九号</b> 月球车与<b>SpaceX Starship HLS</b> 着陆器。</p>
+<p style="color:#9affd0">本程为真实推进的阿尔忒弥斯计划 + 月球门户的延伸设想。嫦娥工程已实现月背软着陆。</p>`,
+    story: [
+      { at: 400,  title: '🌙 曙光 · 月球中转站奠基', desc: '3 天的航程，这里是深空之门。' },
+      { at: 10000, title: '🛰 接近月球 · 拉格朗日点可见', desc: '远处那个白点，是月球门户空间站。' },
+    ],
+    conclusion: '🌙 中转站奠基完成。下一站：火星。再下一站：TRAPPIST-1e。',
+  },
+};
+
 const PLANETS = {
   mars: {
     id: 'mars', name: '火星', nameEn: 'Mars', gravity: 14, gravLabel: '0.38g',
@@ -1522,7 +1567,7 @@ const LANDING = {
     ],
   },
   venus: {
-    id: 'venus', name: '金星', nameEn: 'Venus', gravity: 26, gravLabel: '0.9g',
+    id: 'venus', name: '金星', nameEn: 'Venus', gravity: 26, gravLabel: '0.9g', venus: true,
     sky: 0xa9702f, fog: 0x9a6428, fogDensity: 0.0011,
     groundColor: '#9a7a52', groundSpots: 32, hasAtmosphere: true,
     farColor: 0xb98a4a, dust: false, extras: null,
@@ -2082,6 +2127,195 @@ function updateCloudDeck(dt) {
   expObj.textContent = left > 0 ? `在云海中漂浮 · 飞向发光风暴眼解锁地标（剩余 ${left} 处）· 按 P 拍照 · 按 R 返航` : `✦ 你已穿越${exp.surfacePlanet.name}云海！按 R 返航`;
 }
 
+// ---------- 金星：地狱平原（厚硫酸云 + 玄武岩 + 熔岩裂纹 + 苏联着陆器） ----------
+function makeVenusSky() {
+  // 程序化硫酸云穹顶（厚、分层）
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 512;
+  const x = c.getContext('2d');
+  const g = x.createLinearGradient(0, 0, 0, 512);
+  g.addColorStop(0,    '#3a1c0a');   // 顶部：几乎血红
+  g.addColorStop(0.25, '#7a3a18');
+  g.addColorStop(0.55, '#b07028');   // 中部：橘红硫酸云
+  g.addColorStop(0.85, '#d2923a');
+  g.addColorStop(1,    '#7a5230');   // 地平线附近：褐色雾
+  x.fillStyle = g; x.fillRect(0, 0, 1024, 512);
+  // 横向硫酸云带
+  for (let i = 0; i < 12; i++) {
+    const y = 80 + i * 30 + Math.random() * 18;
+    const w = 600 + Math.random() * 380;
+    const x0 = Math.random() * 1024 - 200;
+    x.fillStyle = `rgba(${180 + Math.random() * 50 | 0},${90 + Math.random() * 40 | 0},${30 + Math.random() * 30 | 0},${0.18 + Math.random() * 0.25})`;
+    x.beginPath(); x.ellipse(x0 + w / 2, y, w / 2, 14 + Math.random() * 22, 0, 0, Math.PI * 2); x.fill();
+  }
+  // 极厚的霾层（地平线灰黄）
+  for (let i = 0; i < 60; i++) {
+    const y = 380 + Math.random() * 120;
+    x.fillStyle = `rgba(120,90,60,${0.18 + Math.random() * 0.2})`;
+    x.beginPath(); x.ellipse(Math.random() * 1024, y, 200 + Math.random() * 400, 20 + Math.random() * 30, 0, 0, Math.PI * 2); x.fill();
+  }
+  // 太阳朦胧（被云层滤成橙黄）
+  const grd = x.createRadialGradient(820, 200, 4, 820, 200, 120);
+  grd.addColorStop(0, 'rgba(255, 230, 160, 0.95)');
+  grd.addColorStop(0.4, 'rgba(255, 200, 120, 0.4)');
+  grd.addColorStop(1, 'rgba(255, 160, 80, 0)');
+  x.fillStyle = grd;
+  x.beginPath(); x.arc(820, 200, 120, 0, Math.PI * 2); x.fill();
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+function makeVenusGround() {
+  // 玄武岩熔岩流：暗红裂纹网络 + 灰黑基岩
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 1024;
+  const x = c.getContext('2d');
+  x.fillStyle = '#1a1108'; x.fillRect(0, 0, 1024, 1024);
+  // 基岩斑驳
+  for (let i = 0; i < 800; i++) {
+    const px = Math.random() * 1024, py = Math.random() * 1024;
+    const r = 4 + Math.random() * 22;
+    const v = 30 + Math.random() * 50;
+    x.fillStyle = `rgba(${v | 0},${(v * 0.7) | 0},${(v * 0.55) | 0},${0.45 + Math.random() * 0.4})`;
+    x.beginPath(); x.arc(px, py, r, 0, Math.PI * 2); x.fill();
+  }
+  // 熔岩裂纹：暗红+亮橙细线网络
+  for (let i = 0; i < 240; i++) {
+    const sx = Math.random() * 1024, sy = Math.random() * 1024;
+    let px = sx, py = sy; const segs = 6 + (Math.random() * 14) | 0;
+    const hot = Math.random() < 0.3;
+    x.strokeStyle = hot ? `rgba(255,${140 + Math.random() * 80 | 0},30,${0.7 + Math.random() * 0.3})` : `rgba(220,${60 + Math.random() * 30 | 0},20,${0.4 + Math.random() * 0.3})`;
+    x.lineWidth = hot ? 1.5 + Math.random() * 2 : 0.6 + Math.random() * 1.2;
+    x.beginPath(); x.moveTo(px, py);
+    for (let j = 0; j < segs; j++) {
+      px += (Math.random() - 0.5) * 90; py += (Math.random() - 0.5) * 90;
+      x.lineTo(px, py);
+    }
+    x.stroke();
+  }
+  // 火山渣 / 碎块
+  for (let i = 0; i < 500; i++) {
+    const px = Math.random() * 1024, py = Math.random() * 1024;
+    const r = 1.5 + Math.random() * 6;
+    x.fillStyle = `rgba(${20 + Math.random() * 30 | 0},${10 + Math.random() * 20 | 0},${5 + Math.random() * 12 | 0},1)`;
+    x.beginPath(); x.arc(px, py, r, 0, Math.PI * 2); x.fill();
+  }
+  // 硫黄沉积（亮黄斑）
+  for (let i = 0; i < 80; i++) {
+    const px = Math.random() * 1024, py = Math.random() * 1024;
+    const r = 8 + Math.random() * 28;
+    const grd = x.createRadialGradient(px, py, 1, px, py, r);
+    grd.addColorStop(0, 'rgba(255, 220, 100, 0.7)');
+    grd.addColorStop(0.5, 'rgba(220, 180, 80, 0.35)');
+    grd.addColorStop(1, 'rgba(120, 100, 40, 0)');
+    x.fillStyle = grd; x.beginPath(); x.arc(px, py, r, 0, Math.PI * 2); x.fill();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(2, 2); return t;
+}
+function buildVenusLander(group, x, z) {
+  // 苏联"金星9号"风格的探测器：八边形主体 + 抛物面天线 + 三条腿
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(80, 100, 90, 8),
+    new THREE.MeshStandardMaterial({ color: 0xc4a050, metalness: 0.7, roughness: 0.4 }));
+  body.position.y = 95; g.add(body);
+  // 顶部抛物面天线
+  const dish = new THREE.Mesh(new THREE.SphereGeometry(60, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2.6),
+    new THREE.MeshStandardMaterial({ color: 0xeae0c0, metalness: 0.5, roughness: 0.5, side: THREE.DoubleSide }));
+  dish.position.y = 145; dish.rotation.x = Math.PI; g.add(dish);
+  // 三条着陆腿
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2;
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(8, 140, 8),
+      new THREE.MeshStandardMaterial({ color: 0xa89040, metalness: 0.6, roughness: 0.5 }));
+    leg.position.set(Math.cos(a) * 75, 50, Math.sin(a) * 75);
+    leg.rotation.z = Math.cos(a) * 0.25;
+    leg.rotation.x = -Math.sin(a) * 0.25;
+    g.add(leg);
+    // 脚垫
+    const pad = new THREE.Mesh(new THREE.CylinderGeometry(20, 24, 6, 8),
+      new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 1 }));
+    pad.position.set(Math.cos(a) * 130, 3, Math.sin(a) * 130);
+    g.add(pad);
+  }
+  // 太阳能板（小）
+  const panel = new THREE.Mesh(new THREE.BoxGeometry(140, 4, 60),
+    new THREE.MeshStandardMaterial({ color: 0x2a3a5a, metalness: 0.4, roughness: 0.6 }));
+  panel.position.set(110, 130, 0); g.add(panel);
+  g.position.set(x, 0, z);
+  group.add(g);
+}
+function buildVenusSurface(group, planet) {
+  // 1) 厚硫酸云穹顶（替换通用天）
+  const skyTex = makeVenusSky();
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(30000, 32, 24),
+    new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide, fog: false }));
+  group.add(sky);
+  exp.cloudSky = sky;
+  // 2) 橙色雾霭里的太阳（被云滤成橙黄）
+  const sun = new THREE.DirectionalLight(0xffb060, 1.4); sun.position.set(-3000, 1400, -4000); group.add(sun);
+  group.add(new THREE.AmbientLight(0x6a3a18, 0.85));  // 红褐环境光
+  // 一束顶光模拟穿过厚云的光柱
+  const topLight = new THREE.DirectionalLight(0xffd28a, 0.5); topLight.position.set(800, 2400, 1200); group.add(topLight);
+  // 3) 玄武岩熔岩地表
+  const SIZE = 13000, SEG = 220;
+  const geo = new THREE.PlaneGeometry(SIZE, SIZE, SEG, SEG);
+  geo.rotateX(-Math.PI / 2);
+  const pos = geo.attributes.position;
+  const colors = new Float32Array(pos.count * 3);
+  const base = new THREE.Color('#2a1d12');
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), z = pos.getZ(i);
+    // 暗色平原 + 缓慢起伏 + 少量火山口凹陷
+    let y = Math.sin(x * 0.0007) * 36 + Math.cos(z * 0.0009) * 32 + Math.sin((x + z) * 0.0005) * 24;
+    y += craterField(x, z, planet.craters);
+    // 几座明显火山高地
+    for (const v of [[-2000, 1500], [3000, -2200], [-3500, -3000], [1200, 3500]]) {
+      const d = Math.hypot(x - v[0], z - v[1]);
+      if (d < 1800) y += (1 - d / 1800) * 220;
+    }
+    pos.setY(i, y);
+    const h = THREE.MathUtils.clamp((y + 100) / 300, 0, 1);
+    // 高度越高越红（高地岩石），低处偏暗
+    const col = new THREE.Color().setHSL(0.06 + h * 0.04, 0.55, 0.08 + h * 0.18);
+    colors[i * 3] = col.r; colors[i * 3 + 1] = col.g; colors[i * 3 + 2] = col.b;
+  }
+  geo.computeVertexNormals();
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  const ground = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: makeVenusGround(), vertexColors: true, roughness: 0.95, metalness: 0 }));
+  group.add(ground);
+  // 4) 暗色玄武岩碎石（更高密度、层叠）
+  const rockMat = new THREE.MeshStandardMaterial({ color: 0x1a1208, roughness: 1 });
+  const rocks = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), rockMat, 2200);
+  const dum = new THREE.Object3D();
+  for (let i = 0; i < 2200; i++) {
+    const rx = (Math.random() - 0.5) * 12000, rz = (Math.random() - 0.5) * 12000;
+    const s = 6 + Math.random() * 50;
+    dum.position.set(rx, s * 0.4, rz);
+    dum.rotation.set(Math.random() * 6, Math.random() * 6, Math.random() * 6);
+    dum.scale.set(s, s * 0.7, s); dum.updateMatrix();
+    rocks.setMatrixAt(i, dum.matrix);
+  }
+  group.add(rocks);
+  // 5) 远处火山剪影（4 座），让地平线有起伏
+  for (let i = 0; i < 4; i++) {
+    const ang = (i / 4) * Math.PI * 2 + 0.4;
+    const r = 8500;
+    const m = new THREE.Mesh(
+      new THREE.ConeGeometry(700 + Math.random() * 400, 1400 + Math.random() * 700, 16),
+      new THREE.MeshStandardMaterial({ color: 0x2a1808, roughness: 1 })
+    );
+    m.position.set(Math.cos(ang) * r, 600, Math.sin(ang) * r);
+    group.add(m);
+  }
+  // 6) 苏联着陆器（"金星9号"风格）放在最近地标处
+  buildVenusLander(group, -1800, -1200);
+  // 7) 厚云雾层（贴近地面再铺一层黄褐半透明）
+  const fogLayer = new THREE.Mesh(new THREE.PlaneGeometry(20000, 20000),
+    new THREE.MeshBasicMaterial({ color: 0xc88a3a, transparent: true, opacity: 0.25, depthWrite: false, side: THREE.DoubleSide }));
+  fogLayer.rotation.x = -Math.PI / 2; fogLayer.position.y = 120;
+  group.add(fogLayer);
+  exp.dust = { layer: fogLayer, t: 0 };
+  // 8) 地标
+  exp.pois = planet.pois.map(p => makePOI(group, p.x, p.y, p.z, p.name, p.desc, p.id));
+}
+
 function buildPlanetSurface(group, planet) {
   const sky = new THREE.Mesh(new THREE.SphereGeometry(30000, 32, 16),
     new THREE.MeshBasicMaterial({ color: planet.sky, side: THREE.BackSide }));
@@ -2156,9 +2390,11 @@ function makeFarPlanet(planet) {
 }
 
 /* ---------- 流程控制 ---------- */
-function startExpedition(planetId) {
+function startExpedition(missionId) {
   if (mode === 'expedition') return;
-  exp.targetPlanet = PLANETS[planetId] || PLANETS.mars;
+  const mission = EXPEDITIONS[missionId] || EXPEDITIONS.ark;
+  exp.mission = mission;
+  exp.targetPlanet = PLANETS[mission.planet] || PLANETS.mars;
   mode = 'expedition';
   exp.active = true; exp.phase = 'countdown'; exp.t = 0; exp.alt = 0; exp.reached = {}; exp.achievements.clear(); exp.debris = [];
   exp.moons = []; exp.earthSky = null; exp.dust = null;
@@ -2180,9 +2416,13 @@ function startExpedition(planetId) {
   camera.lookAt(0, 170, 0);
   gameState = 'flying';
   controls.lock();
-  document.getElementById('eb-title').textContent = `🚀 ${exp.targetPlanet.name}远征 · 任务简报`;
-  document.getElementById('eb-body').innerHTML = exp.targetPlanet.brief;
-  expMilestone(`${exp.targetPlanet.name}远征 · 任务简报`, '你站在发射台上，脚下是巨型运载火箭。前方之旅：升空 → 失重 → 星际巡航 → 着陆 → 地表探索。所有数据均为真实航天参数。按 M 随时调出任务简报，按 P 可拍照寄回地球。');
+  // 任务线专属简报（用 mission.intro 替换通用 brief）
+  document.getElementById('eb-title').textContent = `${mission.icon} ${mission.name} · 任务简报`;
+  document.getElementById('eb-body').innerHTML = mission.intro;
+  expMilestone(`${mission.name} · 任务简报`, `${mission.tag}。你站在发射台上，前方就是这次任务的全部故事。按 M 随时调出简报，按 P 可拍照寄回地球。`);
+  // 任务线专属成就：选了一支任务线
+  unlockAch('mission_' + mission.id, '任务线 · ' + mission.name);
+  Sound.rocketRoar();    // 点火：引擎轰鸣贯穿整个升空阶段
   runExpCountdown();
 }
 function runExpCountdown() {
@@ -2208,6 +2448,15 @@ function milestone(km, title, desc) {
     exp.reached[km] = true;
     expMilestone(title, desc);
     if (km === 100) unlockAch('karman', '跨越卡门线');
+    // 任务线专属剧情触发（替代默认描述）
+    if (exp.mission && exp.mission.story) {
+      for (const s of exp.mission.story) {
+        if (s.at === km && !exp.reached['m_' + km]) {
+          exp.reached['m_' + km] = true;
+          setTimeout(() => expMilestone(s.title, s.desc), 1200);
+        }
+      }
+    }
   }
 }
 function updateAscent(dt) {
@@ -2222,7 +2471,7 @@ function updateAscent(dt) {
   milestone(13, '突破 Max-Q（最大动压区）', '海拔约 13 公里。此刻空气最稠密、速度最快，二者叠加让火箭外壳承受最大应力——这是整个发射中最惊险的几十秒，结构工程师最紧张的时刻。');
   milestone(100, '抵达卡门线', '海拔 100 公里，国际公认的“太空边界”。天空在此终结，星辰开始。这里的大气已稀薄到无法支撑飞机机翼，你正式进入了“太空”。');
   milestone(400, '进入近地轨道', '海拔约 400 公里（与国际空间站同高）。速度约 7.8 km/s，与地球引力达成精妙平衡——你成为了一颗人造卫星，90 分钟就能绕地球一圈。');
-  if (k >= 1) { exp.phase = 'orbit'; exp.t = 0; igniteFlame(false); unlockAch('orbit', '成功入轨'); showSub('发动机关机，进入惯性滑行……'); }
+  if (k >= 1) { exp.phase = 'orbit'; exp.t = 0; igniteFlame(false); Sound.rocketRoarStop(); unlockAch('orbit', '成功入轨'); showSub('发动机关机，进入惯性滑行……'); }
 }
 function updateOrbit(dt) {
   if (!exp.reached.zeroG) {
@@ -2273,10 +2522,17 @@ function enterSurface() {
     ? '反推引擎熄火，着陆腿稳稳触地。你站在了距地球数千万公里的红色星球上。这里的重力只有地球的 0.38——轻轻一跳，就能跃起近一米高。'
     : '引擎稳稳悬停，着陆支架轻触月壤。这里没有大气、没有风，天空永远漆黑。重力只有地球的 1/6，你可以像袋鼠一样蹦跳着前进。';
   expMilestone(`着陆 · ${pl.id === 'mars' ? '乌托邦平原' : '静海基地'}`, landDesc);
+  // 任务线专属结语
+  if (exp.mission && exp.mission.conclusion) {
+    setTimeout(() => expMilestone('✦ 任务完成', exp.mission.conclusion), 4200);
+  }
   if (exp.group) scene.remove(exp.group);
   exp.group = new THREE.Group(); scene.add(exp.group);
   exp.moons = []; exp.earthSky = null; exp.dust = null;
-  buildPlanetSurface(exp.group, pl);
+  if (pl.earth) buildEarthSurface(exp.group, pl);
+  else if (pl.cloudDeck) buildCloudDeck(exp.group, pl);
+  else if (pl.venus) buildVenusSurface(exp.group, pl);
+  else buildPlanetSurface(exp.group, pl);
   scene.background = new THREE.Color(pl.sky);
   scene.fog = new THREE.FogExp2(pl.fog, pl.fogDensity);
   camera.position.set(0, 18, 0);
@@ -2316,7 +2572,11 @@ function updateSurface(dt) {
   }
   const R = 5800; const d = Math.hypot(camera.position.x, camera.position.z);
   if (d > R) { camera.position.x *= R / d; camera.position.z *= R / d; }
-  if (exp.dust) exp.dust.rotation.y += dt * 0.01;
+  if (exp.dust) {
+    // 兼容两种形态：Mesh（earth/venus 雾层）/ Object3D（火星尘）
+    if (exp.dust.layer) exp.dust.layer.rotation.z += dt * 0.02;   // Venus 雾层缓慢自转
+    else if (exp.dust.rotation) exp.dust.rotation.y += dt * 0.01;
+  }
   for (const m of exp.moons) { m.ang += m.spd * dt; m.mesh.position.set(Math.cos(m.ang) * m.orbitR, m.h, Math.sin(m.ang) * m.orbitR); }
   if (exp.earthSky) exp.earthSky.rotation.y += dt * 0.05;
   for (const p of exp.pois) {
@@ -2356,6 +2616,7 @@ function beginRoamLanding(L) {
   exp.moons = []; exp.earthSky = null; exp.dust = null; exp.cloudLayer = null; exp.cloudSky = null;
   if (cfg.earth) buildEarthSurface(exp.group, cfg);
   else if (cfg.cloudDeck) buildCloudDeck(exp.group, cfg);
+  else if (cfg.venus) buildVenusSurface(exp.group, cfg);
   else buildPlanetSurface(exp.group, cfg);
   scene.background = new THREE.Color(cfg.sky || 0x0a0a14);
   scene.fog = new THREE.FogExp2(cfg.fog || 0xbfcad6, cfg.fogDensity || 0.00004);
@@ -2454,6 +2715,7 @@ function toggleExpBrief() {
 function endExpedition() {
   if (mode !== 'expedition') return;
   mode = 'roam'; exp.active = false;
+  Sound.rocketRoarStop();     // 兜底：若在升空阶段返航，停掉引擎轰鸣
   if (exp.group) { scene.remove(exp.group); exp.group = null; }
   setRoamVisibility(true);
   scene.background = new THREE.Color(0x000006);
@@ -2477,7 +2739,7 @@ document.getElementById('btn-expedition').addEventListener('click', () => {
   const dest = document.getElementById('exp-dest');
   if (dest) dest.style.display = 'flex';
 });
-document.querySelectorAll('.ed-btn').forEach(b => b.addEventListener('click', () => startExpedition(b.dataset.planet)));
+document.querySelectorAll('.ed-mission').forEach(b => b.addEventListener('click', () => startExpedition(b.dataset.mission)));
 document.getElementById('btn-ed-close').addEventListener('click', () => {
   const dest = document.getElementById('exp-dest'); if (dest) dest.style.display = 'none';
 });
@@ -2530,6 +2792,72 @@ function photoMeta() {
   }
   return { planet: '太阳系漫游', phase: '自由漫游', alt: `(${Math.round(camera.position.x)}, ${Math.round(camera.position.y)}, ${Math.round(camera.position.z)})`, t: new Date().toLocaleString('zh-CN', { hour12: false }) };
 }
+function composePostcard(photoCanvas, meta) {
+  // 在原图下方铺一张"明信片卡面"（540 × ~900），加品牌头/邮戳/印章/水印
+  const W = photoCanvas.width, H = photoCanvas.height;
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H + 360;
+  const x = c.getContext('2d');
+  // 1) 渐变星空背景
+  const bg = x.createLinearGradient(0, 0, 0, c.height);
+  bg.addColorStop(0, '#0a0f24'); bg.addColorStop(0.55, '#0b1530'); bg.addColorStop(1, '#1c0a2a');
+  x.fillStyle = bg; x.fillRect(0, 0, c.width, c.height);
+  // 2) 顶部品牌
+  x.fillStyle = '#7adcff'; x.font = '600 13px -apple-system, "PingFang SC", sans-serif';
+  x.fillText('COSMIC VOYAGE · 来自星辰的明信片', 18, 30);
+  x.strokeStyle = 'rgba(122, 220, 255, 0.4)'; x.lineWidth = 1;
+  x.beginPath(); x.moveTo(18, 38); x.lineTo(c.width - 18, 38); x.stroke();
+  // 3) 照片主体
+  x.drawImage(photoCanvas, 0, 50, W, H);
+  // 4) 照片描边
+  x.strokeStyle = 'rgba(255, 255, 255, 0.18)'; x.lineWidth = 2;
+  x.strokeRect(0, 50, W, H);
+  // 5) 地标/目的地
+  x.fillStyle = '#ffd66b'; x.font = '700 20px -apple-system, "PingFang SC", sans-serif';
+  x.fillText('✦  ' + (meta.planet || '深空'), 18, 50 + H + 38);
+  x.fillStyle = 'rgba(255, 255, 255, 0.72)'; x.font = '14px -apple-system, "PingFang SC", sans-serif';
+  x.fillText((meta.phase || '') + '  ·  ' + (meta.alt || ''), 18, 50 + H + 60);
+  // 6) 底部三栏：日期 / 邮戳 / 水印
+  const baseY = 50 + H + 120;
+  // 日期
+  x.fillStyle = 'rgba(255, 255, 255, 0.5)'; x.font = '11px -apple-system, "PingFang SC", sans-serif';
+  x.fillText('寄出时间', 18, baseY);
+  x.fillStyle = '#fff'; x.font = '600 14px -apple-system, "PingFang SC", sans-serif';
+  x.fillText(meta.t || '—', 18, baseY + 20);
+  // 邮戳（环形 + 文字）
+  x.save(); x.translate(c.width - 100, baseY + 20);
+  x.strokeStyle = 'rgba(255, 92, 92, 0.7)'; x.lineWidth = 2;
+  x.beginPath(); x.arc(0, 0, 36, 0, Math.PI * 2); x.stroke();
+  x.strokeStyle = 'rgba(255, 92, 92, 0.45)'; x.lineWidth = 1;
+  x.beginPath(); x.arc(0, 0, 30, 0, Math.PI * 2); x.stroke();
+  x.fillStyle = 'rgba(255, 92, 92, 0.75)'; x.font = '700 10px -apple-system, sans-serif';
+  x.textAlign = 'center'; x.fillText('SPACE MAIL', 0, -4);
+  x.fillText('—  ∞  —', 0, 8);
+  x.font = '600 8px -apple-system, sans-serif'; x.fillText('COSMOS POST', 0, 22);
+  x.textAlign = 'start'; x.restore();
+  // 邮票（小方框 + 火箭）
+  x.save(); x.translate(c.width - 200, baseY - 4);
+  x.fillStyle = '#fff'; x.fillRect(0, 0, 50, 62);
+  x.fillStyle = '#0a0f24';
+  // 锯齿边框
+  x.strokeStyle = '#0a0f24'; x.lineWidth = 2; x.setLineDash([3, 2]);
+  x.strokeRect(2, 2, 46, 58); x.setLineDash([]);
+  // 小火箭
+  x.fillStyle = '#ffd66b'; x.beginPath();
+  x.moveTo(25, 14); x.lineTo(31, 26); x.lineTo(28, 26); x.lineTo(28, 38);
+  x.lineTo(22, 38); x.lineTo(22, 26); x.lineTo(19, 26); x.closePath(); x.fill();
+  x.fillStyle = '#7adcff'; x.fillRect(23, 38, 4, 6);
+  // 价值
+  x.fillStyle = '#c00'; x.font = '700 9px -apple-system, sans-serif'; x.textAlign = 'center';
+  x.fillText('∞ LY', 25, 54);
+  x.textAlign = 'start'; x.restore();
+  // 7) 水印
+  x.fillStyle = 'rgba(255, 255, 255, 0.32)'; x.font = 'italic 11px -apple-system, "PingFang SC", sans-serif';
+  x.textAlign = 'center';
+  x.fillText('WonderfulClaire.github.io/cosmic-voyage', c.width / 2, c.height - 14);
+  x.textAlign = 'start';
+  return c;
+}
 function takePhoto() {
   Sound.photo();
   composer.render();
@@ -2537,9 +2865,11 @@ function takePhoto() {
   const W = 540, H = Math.round(src.height / src.width * W);
   const oc = document.createElement('canvas'); oc.width = W; oc.height = H;
   oc.getContext('2d').drawImage(src, 0, 0, W, H);
-  const dataURL = oc.toDataURL('image/jpeg', 0.82);
   const meta = photoMeta();
-  const photo = { dataURL, ...meta, stamp: photos.length + 1 };
+  // 合成"明信片"卡面（带品牌/邮戳/邮票/水印）
+  const card = composePostcard(oc, meta);
+  const dataURL = card.toDataURL('image/jpeg', 0.85);
+  const photo = { dataURL, raw: oc.toDataURL('image/jpeg', 0.82), ...meta, stamp: photos.length + 1 };
   photos.push(photo);
   try { localStorage.setItem('cv_photos', JSON.stringify(photos)); } catch (e) {}
   if (photoFlash) { photoFlash.style.opacity = '1'; setTimeout(() => photoFlash.style.opacity = '0', 130); }
@@ -2551,15 +2881,46 @@ function takePhoto() {
   unlockAch('photo', '第一张明信片');
   renderPhotoGrid();
 }
+async function sharePostcard(p) {
+  // 把 dataURL 转成 Blob，尝试 Web Share API；不支持则回退到下载
+  try {
+    const r = await fetch(p.dataURL);
+    const blob = await r.blob();
+    const file = new File([blob], `cosmic-postcard-${p.stamp}.jpg`, { type: 'image/jpeg' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({
+        title: `来自${p.planet}的明信片 · Cosmic Voyage`,
+        text: `📮 我从${p.planet}寄回地球的明信片 — 探索全宇宙：WonderfulClaire.github.io/cosmic-voyage`,
+        files: [file],
+      });
+      return;
+    }
+  } catch (e) { /* 降级 */ }
+  const a = document.createElement('a');
+  a.href = p.dataURL; a.download = `cosmic-postcard-${p.stamp}-${p.planet}.jpg`;
+  document.body.appendChild(a); a.click(); a.remove();
+  const d = document.createElement('div'); d.className = 'exp-toast';
+  d.textContent = '⬇ 已开始下载明信片（可发到朋友圈/微博）';
+  photoToasts.appendChild(d);
+  setTimeout(() => d.classList.add('out'), 2800);
+  setTimeout(() => d.remove(), 3300);
+}
 function renderPhotoGrid() {
   if (!photoGrid) return;
   photoGrid.innerHTML = photos.length ? photos.map(p => `
     <div class="ph-card">
       <img src="${p.dataURL}" alt="postcard"/>
       <div class="ph-meta"><b>#${p.stamp}</b> ${p.planet} · ${p.phase}<br>${p.alt}<br><span class="ph-stamp">📮 已寄回地球 · ${p.t}</span></div>
-      <a class="ph-dl" href="${p.dataURL}" download="cosmic_postcard_${p.stamp}.jpg">⬇ 下载</a>
+      <div class="ph-actions">
+        <a class="ph-dl" href="${p.dataURL}" download="cosmic-postcard_${p.stamp}_${p.planet}.jpg">⬇ 下载</a>
+        <button class="ph-share" data-i="${p.stamp - 1}">🔗 分享</button>
+      </div>
     </div>`).join('') : '<div class="ph-empty">还没有明信片。在旅途中按 <b>P</b> 拍照，把星辰大海寄回地球吧 ✨</div>';
   const cnt = document.getElementById('ph-count'); if (cnt) cnt.textContent = photos.length;
+  // 绑定分享按钮
+  photoGrid.querySelectorAll('.ph-share').forEach(b => b.addEventListener('click', () => {
+    const i = parseInt(b.dataset.i, 10); sharePostcard(photos[i]);
+  }));
 }
 function togglePhotoPanel() {
   if (!photoPanel) return;
