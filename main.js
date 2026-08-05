@@ -53,6 +53,7 @@ controls.addEventListener('lock', () => {
   if (gameState === 'paused') { gameState = 'flying'; hidePause(); }
 });
 controls.addEventListener('unlock', () => {
+  if (helpIsOpen()) { closeHelp(); return; }            // 关操作指南时不进入暂停
   if (mode === 'expedition') return;                    // 远征中 ESC 不触发漫游暂停
   if (roamSurfaceActive) return;                        // 地表探索中 ESC 不触发暂停
   if (uiOpen) return;                                   // 打开航图/图鉴时不进入暂停
@@ -1283,17 +1284,32 @@ function updateHUD() {
   if (mode === 'roam' && !roamSurfaceActive && !interiorActive) updateHazard();
   else { hazardEl.style.opacity = '0'; hazardWarn.style.display = 'none'; }
 }
+function helpIsOpen() { return helpPanel.style.display === 'flex'; }
+// 操作指南：居中有界卡片 + 半透明遮罩，绝不铺满屏幕。
+// 关闭方式：× 按钮 / 「知道了」按钮 / 点遮罩 / H 键 / Esc 键
+function openHelp() {
+  if (helpAutoTimer) { clearTimeout(helpAutoTimer); helpAutoTimer = null; }
+  helpPanel.style.display = 'flex';
+  const bd = document.getElementById('help-backdrop');
+  if (bd) bd.style.display = 'block';
+}
+function closeHelp() {
+  helpPanel.style.display = 'none';
+  const bd = document.getElementById('help-backdrop');
+  if (bd) bd.style.display = 'none';
+  if (helpAutoTimer) { clearTimeout(helpAutoTimer); helpAutoTimer = null; }
+}
 function toggleHelp(force) {
-  if (force === true) helpPanel.style.display = 'block';
-  else if (force === false) helpPanel.style.display = 'none';
-  else helpPanel.style.display = helpPanel.style.display === 'none' ? 'block' : 'none';
+  if (force === true) openHelp();
+  else if (force === false) closeHelp();
+  else if (helpIsOpen()) closeHelp();
+  else openHelp();
 }
 let helpAutoTimer = null;
-// 进入漫游后，操作指南先显示一会儿再自动收起，避免挡住视野；常驻 ❔ 按钮可随时再开
-function autoHideHelp(delay = 7000) {
-  if (helpAutoTimer) clearTimeout(helpAutoTimer);
-  helpPanel.style.display = 'block';
-  helpAutoTimer = setTimeout(() => { helpPanel.style.display = 'none'; }, delay);
+// 显式调用时才自动弹出（默认进入漫游不再自动弹，避免遮挡；由 ❔/H 触发）
+function autoHideHelp(delay = 6000) {
+  openHelp();
+  helpAutoTimer = setTimeout(() => { closeHelp(); }, delay);
 }
 function toggleCard() {
   if (card.style.display === 'flex') { card.style.display = 'none'; return; }
@@ -1546,7 +1562,6 @@ function startCountdown() {
   if (gameState === 'countdown' || gameState === 'flying' || gameState === 'returning') return;
   gameState = 'countdown';
   blocker.style.display = 'none';
-  autoHideHelp(7000);   // 操作指南先显示 7 秒再自动收起
   controls.lock();
   launchEl.style.display = 'flex';
   const seq = ['3', '2', '1', '🔥 点火'];
@@ -3071,7 +3086,7 @@ document.getElementById('btn-expedition').addEventListener('click', (e) => {
   else console.error('[cosmic] #exp-dest not found');
   document.getElementById('blocker').style.display = 'none'; // 收起开场遮罩，避免遮挡任务卡
   if (typeof helpAutoTimer !== 'undefined' && helpAutoTimer) clearTimeout(helpAutoTimer);
-  if (typeof helpPanel !== 'undefined' && helpPanel) helpPanel.style.display = 'none';
+  if (typeof helpPanel !== 'undefined' && helpPanel) closeHelp();
 });
 document.querySelectorAll('.ed-mission').forEach(b => b.addEventListener('click', () => startExpedition(b.dataset.mission)));
 document.getElementById('btn-ed-close').addEventListener('click', () => {
@@ -3093,8 +3108,11 @@ document.getElementById('sound-btn').addEventListener('click', () => {
   document.getElementById('sound-btn').textContent = on ? '🔊' : '🔇';
 });
 // 操作指南：× 关闭、❔ 切换、H 键也行
-document.getElementById('help-close').addEventListener('click', () => { if (helpAutoTimer) clearTimeout(helpAutoTimer); helpPanel.style.display = 'none'; });
-document.getElementById('help-btn').addEventListener('click', () => { if (helpAutoTimer) clearTimeout(helpAutoTimer); toggleHelp(); });
+document.getElementById('help-close').addEventListener('click', () => closeHelp());
+document.getElementById('help-ok').addEventListener('click', () => closeHelp());
+const helpBd = document.getElementById('help-backdrop');
+if (helpBd) helpBd.addEventListener('click', () => closeHelp());
+document.getElementById('help-btn').addEventListener('click', () => toggleHelp());
 
 /* ---------- 语音播报 ---------- */
 function speak(t) {
