@@ -182,6 +182,7 @@ body {
 .cine-stage svg .spin-g { animation: spin 90s linear infinite; }
 .cine-stage svg .orbit-g { animation: spin var(--dur, 16s) linear infinite; }
 .cine-stage svg .tw { animation: tw 3.2s ease-in-out infinite; }
+.cine-stage svg .sun-pulse { transform-box: view-box; transform-origin: 230px 150px; animation: pulse 4.5s ease-in-out infinite; }
 .cine-anim { animation: fadeUp .8s ease both; }
 
 /* ---------- 星图雷达（小地图） ---------- */
