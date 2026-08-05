@@ -1,5 +1,15 @@
 // main.js —— 沉浸式宇宙旅行核心逻辑（整个宇宙版）
-// cosmic-voyage build v5 · 2026-08-05 · 玩具"今日状态"背景音乐 + SW v5 cache bust
+// cosmic-voyage build v9 · 2026-08-05 · HTML ?v=9 cache-busting + 按钮多事件兜底 + SW 升级强制 reload
+// SW 升级时自动 reload（保证用户拿到的是最新代码而不是旧 SW 缓存的 main.js）
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    // 收到新版 SW 的 controllerchange → 自动重载当前页（仅一次）
+    if (!window.__cv_reloaded) { window.__cv_reloaded = true; location.reload(); }
+  });
+  navigator.serviceWorker.addEventListener('message', e => {
+    if (e.data && e.data.type === 'SW_UPDATED') console.log('[cosmic] SW 升级到', e.data.cache);
+  });
+}
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -3087,15 +3097,33 @@ document.getElementById('je-return').addEventListener('click', () => {
   else endExpedition();
 });
 
-document.getElementById('btn-expedition').addEventListener('click', (e) => {
-  console.log('[cosmic] 星际远征 clicked · v5+', { target: e.target.id });
-  try { Sound.resume(); Sound.armMusic(); } catch (e) { console.warn('[cosmic] sound err', e); }
+// 远征入口：绑多事件兜底（pointerdown 最早触发，最可靠；某些浏览器/SW 缓存会让 click 丢失）
+function _openExpedition(e) {
+  console.log('[cosmic] 星际远征 clicked · v9 · event=' + (e && e.type) + ' target=' + (e && e.target && e.target.id));
+  try { Sound.resume(); Sound.armMusic(); } catch (err) { console.warn('[cosmic] sound err', err); }
   const dest = document.getElementById('exp-dest');
+  console.log('[cosmic] exp-dest 元素:', dest ? 'FOUND' : 'MISSING');
   if (dest) dest.style.display = 'flex';
-  else console.error('[cosmic] #exp-dest not found');
-  document.getElementById('blocker').style.display = 'none'; // 收起开场遮罩，避免遮挡任务卡
+  document.getElementById('blocker').style.display = 'none';
   if (typeof helpAutoTimer !== 'undefined' && helpAutoTimer) clearTimeout(helpAutoTimer);
   if (typeof helpPanel !== 'undefined' && helpPanel) closeHelp();
+}
+(function bindExpedition() {
+  const btn = document.getElementById('btn-expedition');
+  if (!btn) { console.error('[cosmic] #btn-expedition MISSING'); return; }
+  btn.addEventListener('pointerdown', _openExpedition);
+  btn.addEventListener('mousedown', _openExpedition);
+  btn.addEventListener('touchstart', _openExpedition, { passive: true });
+  btn.addEventListener('click', _openExpedition);
+  btn.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); _openExpedition(e); } });
+  console.log('[cosmic] btn-expedition handlers bound');
+})();
+// 备用入口：任意页面位置按 X 键直接打开远征
+addEventListener('keydown', e => {
+  if (e.key === 'x' || e.key === 'X') {
+    const dest = document.getElementById('exp-dest');
+    if (dest && dest.style.display !== 'flex') { e.preventDefault(); _openExpedition(e); }
+  }
 });
 document.querySelectorAll('.ed-mission').forEach(b => b.addEventListener('click', () => startExpedition(b.dataset.mission)));
 document.getElementById('btn-ed-close').addEventListener('click', () => {
