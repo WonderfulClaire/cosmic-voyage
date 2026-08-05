@@ -2129,8 +2129,8 @@ function beginRoamLanding(L) {
   if (cfg.earth) buildEarthSurface(exp.group, cfg);
   else if (cfg.cloudDeck) buildCloudDeck(exp.group, cfg);
   else buildPlanetSurface(exp.group, cfg);
-  scene.background = new THREE.Color(cfg.sky);
-  scene.fog = new THREE.FogExp2(cfg.fog, cfg.fogDensity);
+  scene.background = new THREE.Color(cfg.sky || 0x0a0a14);
+  scene.fog = new THREE.FogExp2(cfg.fog || 0xbfcad6, cfg.fogDensity || 0.00004);
   camera.position.set(0, 18, 0);
   camera.lookAt(0, 32, -220);
   if (!controls.isLocked) { try { controls.lock(); } catch (e) {} }
