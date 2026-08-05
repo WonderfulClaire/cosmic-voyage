@@ -338,6 +338,58 @@ export const Sound = (() => {
     }, 1600);
   }
 
+  // ---------- 火箭轰鸣（升空阶段持续；接地气的大推力发动机声） ----------
+  let rocketHandle = null;
+  function rocketRoar() {
+    if (!ensure() || !enabled) return;
+    if (ctx.state === 'suspended') ctx.resume();
+    if (rocketHandle) return;                       // 已经在轰鸣
+    const t = ctx.currentTime;
+    const bus = ctx.createGain(); bus.gain.value = 0.0001; bus.connect(sfxGain);
+    bus.gain.linearRampToValueAtTime(0.55, t + 1.6);    // 慢起（引擎点火升功率）
+    // 1) 棕色噪声：低频主体（推力室震颤）
+    const brown = (() => {
+      const sr = ctx.sampleRate, len = Math.floor(sr * 2);
+      const b = ctx.createBuffer(1, len, sr); const d = b.getChannelData(0);
+      let last = 0; for (let i = 0; i < len; i++) { const w = Math.random() * 2 - 1; last = (last + 0.02 * w) / 1.02; d[i] = last * 3.5; }
+      const s = ctx.createBufferSource(); s.buffer = b; s.loop = true;
+      const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 320; f.Q.value = 1.4;
+      const g = ctx.createGain(); g.gain.value = 0.9;
+      s.connect(f); f.connect(g); g.connect(bus); s.start(t); return { s, f, g };
+    })();
+    // 2) 白噪声 + 带通：喷气嘶声（涡轮排气）
+    const hiss = (() => {
+      const s = noiseSrc();
+      const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1800; f.Q.value = 0.6;
+      const g = ctx.createGain(); g.gain.value = 0.18;
+      s.connect(f); f.connect(g); g.connect(bus); s.start(t); return { s, f, g };
+    })();
+    // 3) LFO：低频正弦让轰鸣“呼吸、震动”
+    const lfo = ctx.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 7.5;
+    const lfoG = ctx.createGain(); lfoG.gain.value = 180;
+    lfo.connect(lfoG); lfoG.connect(brown.f.frequency); lfo.start(t);
+    // 4) 隐隐的谐波：腔体共振感
+    const o1 = ctx.createOscillator(); o1.type = 'sine'; o1.frequency.value = 78;
+    const o1g = ctx.createGain(); o1g.gain.value = 0.13;
+    o1.connect(o1g); o1g.connect(bus); o1.start(t);
+    const o2 = ctx.createOscillator(); o2.type = 'sine'; o2.frequency.value = 156;
+    const o2g = ctx.createGain(); o2g.gain.value = 0.06;
+    o2.connect(o2g); o2g.connect(bus); o2.start(t);
+    rocketHandle = { bus, brown, hiss, lfo, lfoG, o1, o2, o1g, o2g };
+  }
+  function rocketRoarStop() {
+    if (!rocketHandle) return;
+    const h = rocketHandle; rocketHandle = null;
+    const t = ctx.currentTime;
+    h.bus.gain.cancelScheduledValues(t);
+    h.bus.gain.setValueAtTime(h.bus.gain.value, t);
+    h.bus.gain.linearRampToValueAtTime(0.0001, t + 1.2);
+    setTimeout(() => {
+      try { h.brown.s.stop(); h.hiss.s.stop(); h.lfo.stop(); h.o1.stop(); h.o2.stop(); } catch (e) {}
+      try { h.bus.disconnect(); } catch (e) {}
+    }, 1400);
+  }
+
   // ---------- 一次性音效 ----------
   function gearShift(g) {
     resume(); if (!ctx) return;
@@ -458,7 +510,8 @@ export const Sound = (() => {
   return {
     resume, ensure, setEnvironment, setWarp,
     gearShift, land, jump, footstep, photo, achievement, poi, entryHiss, ui,
-    cueArrival, cueEarth, cueEpic, startCinematic, stopCinematic,
+    cueArrival, cueEarth, cueEpic,
+    rocketRoar, rocketRoarStop, startCinematic, stopCinematic,
     setEnabled, toggle, isEnabled: () => enabled, armMusic,
   };
 })();
