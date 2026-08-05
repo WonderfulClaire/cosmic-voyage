@@ -60,6 +60,7 @@ body {
   background: rgba(6, 16, 34, 0.55); border: 1px solid rgba(120, 220, 255, 0.35);
   border-radius: 10px; padding: 14px 18px; font-size: 13px; line-height: 1.9;
   backdrop-filter: blur(4px); max-width: 420px; transition: opacity .35s;
+  z-index: 12; display: none;   /* 默认隐藏：仅在漫游/远征/落地阶段显式打开 */
 }
 #help-close {
   position: absolute; top: 6px; right: 8px; width: 22px; height: 22px;
