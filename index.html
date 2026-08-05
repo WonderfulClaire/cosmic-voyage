@@ -52,6 +52,8 @@
       <div><b>星图雷达</b> 右下角小地图 + 边缘箭头指引方向</div>
       <div><b>R</b> 结束任务 · 返航结算</div>
       <div><b>ESC</b> 暂停任务</div>
+      <div><b>P</b> 拍照 · 寄回地球的明信片</div>
+      <div><b>L</b> 打开 / 关闭明信片相册</div>
       <div class="help-tip">飞向发光的天体就能学到知识</div>
     </div>
 
@@ -94,12 +96,26 @@
         <div>🧭 右下角星图雷达 + 边缘箭头帮你导航</div>
         <div>🗺 按 <b>G</b> 打开星图航图，一键跃迁到十大宇宙区域（含地外生命探索、平行宇宙·理论）</div>
         <div>📖 按 <b>B</b> 打开宇宙图鉴，查看你探索了多少天体</div>
+        <div>📸 旅途中按 <b>P</b> 拍照，把星辰大海寄回地球（像旅行青蛙寄明信片）</div>
         <div>⌨ <b>R</b> 随时结束任务 · 返航结算 · <b>ESC</b> 暂停</div>
       </div>
       <div class="intro-btns">
         <button id="btn-launch">🚀 启动引擎 · 自由漫游</button>
-        <button id="btn-expedition">🚀 火星远征 · 剧情模式</button>
+        <button id="btn-expedition">🚀 星际远征 · 选择目的地</button>
       </div>
+    </div>
+  </div>
+
+  <!-- 远征目的地选择 -->
+  <div id="exp-dest">
+    <div class="ed-inner">
+      <div class="ed-title">🚀 选择远征目的地</div>
+      <div class="ed-sub">从地球发射，开启一段真实的星球之旅 · 数据均为真实航天参数</div>
+      <div class="ed-btns">
+        <button class="ed-btn" data-planet="mars">🔴 火星<br><span>奥林匹斯山 · 水手谷 · 重力 0.38g</span></button>
+        <button class="ed-btn" data-planet="moon">🌑 月球<br><span>阿波罗遗址 · 嫦娥落点 · 重力 1/6g</span></button>
+      </div>
+      <button id="btn-ed-close">返回</button>
     </div>
   </div>
 
@@ -164,20 +180,32 @@
     <div id="exp-sub"></div>
     <div id="exp-obj"></div>
     <div id="exp-toasts"></div>
-    <div id="exp-help">WASD 行走 · 空格 跳跃(火星 0.38g) · 走向发光光柱解锁地标 · M 任务简报 · R 结束远征返回</div>
+    <div id="exp-help">WASD 行走 · 空格 跳跃(<span id="exp-grav">火星 0.38g</span>) · 走向发光光柱解锁地标 · P 拍照寄回地球 · L 明信片相册 · M 任务简报 · V 语音播报 · R 结束远征返回</div>
   </div>
 
   <!-- 远征任务简报 -->
   <div id="exp-brief">
     <div class="eb-inner">
-      <div class="eb-title">🚀 火星远征 · 任务简报</div>
-      <div class="eb-body">
+      <div class="eb-title" id="eb-title">🚀 星际远征 · 任务简报</div>
+      <div class="eb-body" id="eb-body">
         <p>目的地：<b>火星（Mars）</b>——距地球最近时约 <b>5460 万公里</b>，最远约 4 亿公里；即便以第二宇宙速度（11.2 km/s）直飞，也要 <b>约 7 个月</b>。</p>
         <p>这颗锈红色的星球，是人类最想踏上的下一颗行星：一天约 <b>24.6 小时</b>（一个“火星日/sol”），重力只有地球的 <b>0.38</b>（轻轻一跳就能跃起近一米），大气 <b>95% 是二氧化碳</b>、密度仅为地球的 0.6%。</p>
         <p>这里曾有河流与湖泊，今天两极藏着水冰与干冰。最高的山<b>奥林匹斯山</b>高约 21.9 公里（珠峰近 3 倍），最长的峡谷<b>水手谷</b>绵延 4000 公里。中国的<b>祝融号</b>已在乌托邦平原巡视。</p>
         <p style="color:#ffe27a">本程为硬核科幻纪实：升空、失重、巡航、着陆、地表探索，全部标注真实数据。准备好了吗，宇航员？</p>
       </div>
       <button id="btn-eb-close">继续探索 ▶</button>
+    </div>
+  </div>
+
+  <!-- 拍照 · 寄回地球的明信片 -->
+  <div id="photo-flash"></div>
+  <div id="photo-toasts"></div>
+  <div id="photo-panel">
+    <div class="pp-inner">
+      <div class="pp-head">📮 寄回地球的明信片 · 已收集 <span id="ph-count">0</span> 张</div>
+      <div id="photo-grid"></div>
+      <div class="pp-tip">在旅途中按 <b>P</b> 拍照，每张明信片都会自动寄回地球 · 点击「⬇ 下载」保存到本地 · 按 <b>L</b> 开关本相册</div>
+      <button id="btn-ph-close">关闭 (L)</button>
     </div>
   </div>
 
