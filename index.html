@@ -38,10 +38,12 @@
       <div id="hud-zone">◈ 太阳系 · Solar System</div>
       <div id="hud-target">最近 · —</div>
       <div id="hud-hint">按 E 查看科普</div>
+      <button id="help-btn" title="操作指南 (H)">❔</button>
       <button id="sound-btn" title="声音开关 (M)">🔊</button>
     </div>
 
     <div id="help">
+      <button id="help-close" title="关闭指南 (H)">×</button>
       <div class="help-title">操作指南</div>
       <div><b>W / S</b> 前进 / 后退</div>
       <div><b>A / D</b> 左右平移</div>
@@ -264,6 +266,22 @@
       <div id="photo-grid"></div>
       <div class="pp-tip">在旅途中按 <b>P</b> 拍照，每张明信片都会自动寄回地球 · 点击「🔗 分享」可用微信/朋友圈/微博/任意 App 发送 · 「⬇ 下载」保存到本地 · 按 <b>L</b> 开关本相册</div>
       <button id="btn-ph-close">关闭 (L)</button>
+    </div>
+  </div>
+
+  <!-- 远征 / 探索完成 · 旅程结算 -->
+  <div id="journey-end">
+    <div class="je-card">
+      <div class="je-badge" id="je-badge">🚀 任务完成</div>
+      <h1 id="je-title">旅程完成</h1>
+      <div class="je-sub" id="je-sub"></div>
+      <div class="je-stats" id="je-stats"></div>
+      <div class="je-extra" id="je-extra"></div>
+      <div class="je-credits" id="je-credits" style="display:none"></div>
+      <div class="je-actions">
+        <button id="je-explore" class="je-explore">📸 继续探索 / 拍照</button>
+        <button id="je-return">🚀 返回太空 · 开启新旅程</button>
+      </div>
     </div>
   </div>
 
