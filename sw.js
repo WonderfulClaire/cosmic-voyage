@@ -1,6 +1,6 @@
 // COSMIC VOYAGE — Service Worker
 // 同源静态资源缓存：重复访问秒开、源站带宽大幅下降、断网也能进首页。
-const CACHE = 'cosmic-v2';
+const CACHE = 'cosmic-v3';
 const CORE = [
   './index.html',
   './styles.css',
