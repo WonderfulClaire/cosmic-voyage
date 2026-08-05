@@ -1,4 +1,5 @@
 // main.js —— 沉浸式宇宙旅行核心逻辑（整个宇宙版）
+// cosmic-voyage build v5 · 2026-08-05 · 玩具"今日状态"背景音乐 + SW v5 cache bust
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -1536,10 +1537,10 @@ const missionReturn = document.getElementById('mission-return');
 const mrStats = document.getElementById('mr-stats');
 const mrList = document.getElementById('mr-list');
 
-document.getElementById('btn-launch').addEventListener('click', () => { Sound.resume(); Sound.armMusic(); startCountdown(); });
+document.getElementById('btn-launch').addEventListener('click', () => { Sound.resume(); Sound.armMusic(); Sound.startAmbient(); startCountdown(); });
 document.getElementById('btn-resume').addEventListener('click', () => controls.lock());
 document.getElementById('btn-return').addEventListener('click', triggerReturn);
-document.getElementById('btn-relaunch').addEventListener('click', () => { resetMission(); startCountdown(); });
+document.getElementById('btn-relaunch').addEventListener('click', () => { Sound.stopAmbient(); resetMission(); startCountdown(); });
 
 function startCountdown() {
   if (gameState === 'countdown' || gameState === 'flying' || gameState === 'returning') return;
@@ -1575,6 +1576,7 @@ function doIgnition() {
 function triggerReturn() {
   if (gameState !== 'flying' && gameState !== 'paused') return;
   gameState = 'returning';
+  Sound.stopAmbient();   // 返航时停玩具背景音乐
   controls.unlock();
   fovTarget = 56;
   document.body.classList.add('returning');
