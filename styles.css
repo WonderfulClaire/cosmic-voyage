@@ -593,11 +593,10 @@ body.shake-land #scene { animation: shake 0.5s linear 3; }
   transition: opacity .3s;
 }
 #hazard-warn {
-  position: fixed; left: 50%; top: 12%; transform: translateX(-50%);
-  z-index: 11; display: none; font-size: 17px; font-weight: 800; letter-spacing: 2px;
-  padding: 8px 22px; border-radius: 999px;
-  background: rgba(8, 4, 12, 0.5); border: 1px solid rgba(255, 120, 80, 0.5);
+  position: fixed; left: 50%; top: 14%; transform: translateX(-50%);
+  z-index: 11; display: none; font-size: 14px; font-weight: 600; letter-spacing: 0.5px;
+  padding: 6px 16px; border-radius: 999px;
+  background: rgba(8, 4, 12, 0.42); border: 1px solid rgba(255, 130, 90, 0.35);
   backdrop-filter: blur(3px);
-  animation: hazardPulse 1.4s ease-in-out infinite;
+  /* 不闪烁：仅作静态轻提示，避免喧宾夺主 */
 }
-@keyframes hazardPulse { 0%, 100% { opacity: 0.65; } 50% { opacity: 1; } }
