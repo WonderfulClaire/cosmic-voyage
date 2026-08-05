@@ -311,7 +311,7 @@ body.returning #scene { animation: shake 0.5s linear 3; }
   font-size: 18px; font-weight: 700; color: #06121f; border: none; cursor: pointer;
   background: linear-gradient(90deg, #7fd4ff, #4aa8ff); padding: 14px 36px; border-radius: 30px;
   animation: pulse 2s infinite; pointer-events: auto;
-  position: relative; z-index: 50;   /* 显式最高层 */
+  position: relative; z-index: 9999;   /* v9: 提升到最高层，任何浮层都盖不住 */
 }
 #btn-launch:hover { filter: brightness(1.1); }
 
@@ -437,8 +437,10 @@ body.returning #scene { animation: shake 0.5s linear 3; }
   font-size: 18px; font-weight: 700; color: #06121f; border: none; cursor: pointer;
   background: linear-gradient(90deg, #ff9a5c, #ff5a3c); padding: 14px 34px; border-radius: 30px;
   animation: pulse 2s infinite; pointer-events: auto;
-  position: relative; z-index: 50;   /* 显式最高层：保证 help / 其他浮层不会盖住 click */
+  position: relative; z-index: 9999;   /* v9: 提升到最高层，任何浮层都盖不住 */
+  outline: none;
 }
+#btn-expedition:focus { box-shadow: 0 0 0 3px rgba(255,180,80,0.6); }
 #btn-expedition:hover { filter: brightness(1.1); }
 
 /* ---------- 火星远征 HUD ---------- */
