@@ -36,6 +36,14 @@ let uiOpen = false;               // 星图航图 / 图鉴是否打开（避免�
 let flyTo = null;                 // 区域跃迁目标 {target, zone}
 let currentZone = ZONES[0];       // 当前所在区域（就近判定）
 let mode = 'roam';                // 'roam' | 'expedition'（火星远征剧情模式）
+let roamSurfaceActive = false;    // 漫游中是否正处于某行星地表探索
+const roamExitPos = new THREE.Vector3();
+let landTarget = null;            // 漫游中可着陆的邻近行星
+const _tmpVec = new THREE.Vector3();
+const hazardEl = document.getElementById('hazard');
+const hazardWarn = document.getElementById('hazard-warn');
+const expHelp = document.getElementById('exp-help');
+const DEFAULT_EXP_HELP = expHelp.innerHTML;
 
 controls.addEventListener('lock', () => {
   blocker.style.display = 'none';
@@ -43,6 +51,7 @@ controls.addEventListener('lock', () => {
 });
 controls.addEventListener('unlock', () => {
   if (mode === 'expedition') return;                    // 远征中 ESC 不触发漫游暂停
+  if (roamSurfaceActive) return;                        // 地表探索中 ESC 不触发暂停
   if (uiOpen) return;                                   // 打开航图/图鉴时不进入暂停
   if (gameState === 'flying') { gameState = 'paused'; showPause(); }
   else if (gameState === 'countdown') {                 // 倒计时中误按 ESC：回到开场
@@ -60,29 +69,66 @@ scene.add(sunLight);
 
 /* ---------------- 程序化纹理 ---------------- */
 function makePlanetTexture(baseHex, opts = {}) {
-  const c = document.createElement('canvas'); c.width = 512; c.height = 256;
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 512;
   const ctx = c.getContext('2d');
   const base = new THREE.Color(baseHex);
-  ctx.fillStyle = `#${base.getHexString()}`; ctx.fillRect(0, 0, 512, 256);
-  const bands = opts.bands || 6;
-  for (let i = 0; i < bands; i++) {
-    const y = Math.random() * 256, h = 8 + Math.random() * 36;
-    const shade = 0.6 + Math.random() * 0.5;
-    const col = base.clone().multiplyScalar(shade);
-    ctx.fillStyle = `rgba(${col.r * 255 | 0},${col.g * 255 | 0},${col.b * 255 | 0},0.5)`;
-    ctx.fillRect(0, y, 512, h);
-  }
-  for (let i = 0; i < (opts.spots || 45); i++) {
-    const x = Math.random() * 512, y = Math.random() * 256, r = 2 + Math.random() * 14;
-    const shade = 0.5 + Math.random() * 0.8;
-    const col = base.clone().multiplyScalar(shade);
-    ctx.beginPath();
-    ctx.fillStyle = `rgba(${col.r * 255 | 0},${col.g * 255 | 0},${col.b * 255 | 0},0.35)`;
-    ctx.arc(x, y, r, 0, 7); ctx.fill();
+  ctx.fillStyle = `#${base.getHexString()}`; ctx.fillRect(0, 0, 1024, 512);
+  // 轻量确定性值噪声（避免每帧闪烁）
+  const vn = (x, y) => {
+    const n = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
+    return n - Math.floor(n);
+  };
+  if (opts.gas) {
+    // 气态巨行星：纬度条带 + 湍流斑
+    for (let y = 0; y < 512; y++) {
+      const lat = y / 512;
+      const turb = 0.5 + 0.5 * Math.sin(lat * 46 + vn(y, 3) * 7.0);
+      const shade = 0.7 + 0.3 * turb + 0.07 * Math.sin(lat * 130);
+      const col = base.clone().multiplyScalar(Math.max(0.35, shade));
+      ctx.fillStyle = `rgba(${col.r * 255 | 0},${col.g * 255 | 0},${col.b * 255 | 0},1)`;
+      ctx.fillRect(0, y, 1024, 1);
+    }
+    for (let i = 0; i < 460; i++) {
+      const x = Math.random() * 1024, y = Math.random() * 512, r = 8 + Math.random() * 46;
+      const shade = 0.68 + Math.random() * 0.5;
+      const col = base.clone().multiplyScalar(shade);
+      ctx.fillStyle = `rgba(${col.r * 255 | 0},${col.g * 255 | 0},${col.b * 255 | 0},0.16)`;
+      ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.5, 0, 0, 7); ctx.fill();
+    }
+    if (opts.storm) {
+      // 木星大红斑
+      const g = ctx.createRadialGradient(715, 330, 0, 715, 330, 96);
+      g.addColorStop(0, 'rgba(214,96,52,0.95)');
+      g.addColorStop(0.55, 'rgba(186,82,50,0.82)');
+      g.addColorStop(1, 'rgba(186,82,50,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(715, 330, 96, 58, 0, 0, 7); ctx.fill();
+    }
+  } else {
+    // 岩质 / 冰质行星：多倍频噪声斑驳 + 撞击点
+    const img = ctx.getImageData(0, 0, 1024, 512);
+    for (let i = 0; i < img.data.length; i += 4) {
+      const px = (i / 4) % 1024, py = Math.floor((i / 4) / 1024);
+      const n = vn(px * 0.05, py * 0.05) * 0.5 + vn(px * 0.22, py * 0.22) * 0.32 + vn(px * 0.9, py * 0.9) * 0.18;
+      const shade = Math.max(0.32, 0.72 + (n - 0.5) * 0.62);
+      const col = base.clone().multiplyScalar(shade);
+      img.data[i] = col.r * 255; img.data[i + 1] = col.g * 255; img.data[i + 2] = col.b * 255;
+    }
+    ctx.putImageData(img, 0, 0);
+    for (let i = 0; i < (opts.spots || 60); i++) {
+      const x = Math.random() * 1024, y = Math.random() * 512, r = 2 + Math.random() * 16;
+      const shade = 0.5 + Math.random() * 0.7;
+      const col = base.clone().multiplyScalar(shade);
+      ctx.fillStyle = `rgba(${col.r * 255 | 0},${col.g * 255 | 0},${col.b * 255 | 0},0.35)`;
+      ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+    }
   }
   if (opts.iceCaps) {
-    ctx.fillStyle = 'rgba(245,250,255,0.92)';
-    ctx.fillRect(0, 0, 512, 26); ctx.fillRect(0, 230, 512, 26);
+    // 不规则极冠（南北）
+    ctx.fillStyle = 'rgba(245,250,255,0.93)';
+    for (let x = 0; x < 1024; x++) {
+      const h = 22 + Math.sin(x * 0.05) * 12 + Math.random() * 7;
+      ctx.fillRect(x, 0, 1, h); ctx.fillRect(x, 512 - h, 1, h);
+    }
   }
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
 }
@@ -585,9 +631,10 @@ function buildLocations() {
 
     } else {
       // 行星 / 卫星 / 矮行星 默认
+      const isGas = (L.id === 'jupiter' || L.id === 'saturn' || L.id === 'uranus' || L.id === 'neptune');
       const mesh = new THREE.Mesh(
-        new THREE.SphereGeometry(L.radius, 48, 48),
-        new THREE.MeshStandardMaterial({ map: makePlanetTexture(L.color, { bands: L.id === 'jupiter' ? 11 : 6, spots: 50, iceCaps: L.id === 'mars' }), roughness: 1, metalness: 0 })
+        new THREE.SphereGeometry(L.radius, 64, 64),
+        new THREE.MeshStandardMaterial({ map: makePlanetTexture(L.color, { gas: isGas, storm: L.id === 'jupiter', spots: 60, iceCaps: L.id === 'mars' }), roughness: isGas ? 0.82 : 1, metalness: 0 })
       );
       if (L.ring) {
         const ring = new THREE.Mesh(
@@ -597,8 +644,19 @@ function buildLocations() {
         ring.rotation.x = -Math.PI / 2.1;
         mesh.add(ring);
       }
-      mesh.position.copy(p); scene.add(mesh); L._mesh = mesh;
+      // 大气辉光：金星(浓黄) / 火星(薄红) / 气态巨行星(冷蓝)
+      if (L.id === 'venus' || L.id === 'mars' || isGas) {
+        const atmoColor = L.id === 'venus' ? 0xffd98a : L.id === 'mars' ? 0xff7a55 : (L.id === 'uranus' || L.id === 'neptune') ? 0x9fd4ff : 0xcfe0ff;
+        addAtmosphere(mesh, L.radius, atmoColor);
+      }
+      mesh.position.copy(p); scene.add(mesh); L._mesh = mesh; L._autoRotate = true;
     }
+  }
+  // 标记实心天体（漫游时不可穿过）与可着陆天体
+  for (const L of LOCATIONS) {
+    L._solid = !!(L.isStar || L.isBlackHole || L.isRedGiant || L.isWhiteDwarf || L.isEarth || L.isMoon || L.isDwarf || L.isPulsar || L.isMagnetar || L.isNeutronBinary || L.isComet ||
+      (!L.isNebula && !L.isGalaxy && !L.isBubble && !L.isCMB && !L.isBelt && !L.isPlanetary && !L.isCraft && !L.isGlobular && !L.isScatter && !L.isQuasar && L._mesh));
+    L._landable = new Set(['mercury', 'venus', 'earth', 'moon', 'mars', 'pluto', 'ceres', 'europa', 'enceladus']).has(L.id);
   }
 }
 
@@ -618,12 +676,19 @@ addEventListener('keydown', e => {
   keys[e.code] = true;
   if (e.code === 'KeyP') { takePhoto(); return; }
   if (e.code === 'KeyL') { togglePhotoPanel(); return; }
+  // 行星地表探索中：仅响应离开键
+  if (roamSurfaceActive) {
+    if (e.code === 'KeyX' || e.code === 'KeyR') { exitRoamSurface(); return; }
+    return; // 地表模式下不响应其它漫游快捷键
+  }
   if (mode === 'expedition') {
     if (e.code === 'KeyR') endExpedition();
     if (e.code === 'KeyM') toggleExpBrief();
     if (e.code === 'KeyV') toggleVoice();
     return;
   }
+  // 漫游中：靠近可着陆行星按 X 登陆表面漫步
+  if (e.code === 'KeyX' && landTarget) { beginRoamLanding(landTarget); return; }
   if (e.code === 'KeyE') toggleCard();
   if (e.code === 'KeyH') toggleHelp();
   if (e.code === 'KeyR') triggerReturn();
@@ -648,7 +713,44 @@ function updateEnterPrompt() {
   if (!enterPrompt) return;
   if (interiorActive) { enterPrompt.style.display = 'flex'; enterPrompt.textContent = '🛰 已进入舱内 · 按 F 离开'; }
   else if (enterTarget) { enterPrompt.style.display = 'flex'; enterPrompt.textContent = `🛰 按 F 进入「${enterTarget.name}」舱内`; }
+  else if (landTarget && !roamSurfaceActive) { enterPrompt.style.display = 'flex'; enterPrompt.textContent = `🪐 按 X 登陆「${landTarget.name}」表面漫步`; }
   else { enterPrompt.style.display = 'none'; }
+}
+// 危险天体邻近反馈：靠近高温/强辐射/极寒等天体时，屏幕边缘浮现对应色彩与警告
+function hazardProfile(L) {
+  if (L.isStar) return { color: '255,70,40', range: L.radius * 15, label: `恒星高温 · 表面约 ${L.id === 'sun' ? '5500' : '数千'}℃` };
+  if (L.isRedGiant) return { color: '255,90,50', range: L.radius * 14, label: '红超巨星 · 剧烈膨胀的高温外层' };
+  if (L.isBlackHole) return { color: '255,130,50', range: L.radius * 18, label: '事件视界 · 引力撕裂警告' };
+  if (L.id === 'hotjupiter') return { color: '255,95,45', range: L.radius * 14, label: '炽热气态巨行星 · 直面恒星炙烤' };
+  if (L.id === 'venus') return { color: '255,205,95', range: L.radius * 13, label: '失控温室 · 90 倍大气压 / 460℃' };
+  if (L.id === 'jupiter' || L.id === 'saturn' || L.id === 'uranus' || L.id === 'neptune') return { color: '120,200,255', range: L.radius * 12, label: '强辐射带 · 无实体表面' };
+  if (L.isPulsar || L.isMagnetar || L.id === 'neutronbinary') return { color: '205,120,255', range: L.radius * 18, label: '致命辐射 · 中子星' };
+  if (L.id === 'pluto' || L.id === 'ceres' || L.id === 'europa' || L.id === 'enceladus') return { color: '175,215,255', range: L.radius * 15, label: '深空极寒 · 接近绝对零度' };
+  return null;
+}
+function updateHazard() {
+  let hp = null, hd = Infinity;
+  for (const L of LOCATIONS) {
+    const h = hazardProfile(L);
+    if (!h) continue;
+    const d = camera.position.distanceTo(L._pos);
+    if (d < h.range && d < hd) { hd = d; hp = h; }
+  }
+  if (hp) {
+    const intensity = Math.min(1, Math.max(0, 1 - hd / hp.range));
+    const a = intensity * intensity * 0.82;
+    hazardEl.style.background = `radial-gradient(circle at 50% 50%, rgba(0,0,0,0) 36%, rgba(${hp.color}, ${a.toFixed(3)}) 100%)`;
+    hazardEl.style.opacity = '1';
+    if (intensity > 0.12) {
+      hazardWarn.style.display = 'block';
+      hazardWarn.textContent = `⚠ ${hp.label}`;
+      hazardWarn.style.color = `rgb(${hp.color})`;
+      hazardWarn.style.textShadow = `0 0 12px rgba(${hp.color},0.8)`;
+    } else hazardWarn.style.display = 'none';
+  } else {
+    hazardEl.style.opacity = '0';
+    hazardWarn.style.display = 'none';
+  }
 }
 const card = document.getElementById('card');
 const cardTitle = document.getElementById('card-title');
@@ -707,9 +809,17 @@ function updateHUD() {
       if (L.enter && camera.position.distanceTo(L._pos) < L.radius * 1.5 + 700) { enterTarget = L; break; }
     }
   }
+  // 可着陆行星提示（漫游中）
+  landTarget = null;
+  if (!interiorActive && !roamSurfaceActive) {
+    for (const L of LOCATIONS) {
+      if (L._landable && camera.position.distanceTo(L._pos) < L.radius * 1.9 + 520) { landTarget = L; break; }
+    }
+  }
   updateEnterPrompt();
   drawMinimap();
   updateEdgeMarkers();
+  if (mode === 'roam' && !roamSurfaceActive && !interiorActive) updateHazard();
 }
 function toggleHelp() { helpPanel.style.display = helpPanel.style.display === 'none' ? 'block' : 'none'; }
 function toggleCard() {
@@ -1059,7 +1169,7 @@ function animate() {
       flyTo = null;
       showZoneBanner(currentZone);
     }
-  } else if (controls.isLocked && gameState === 'flying' && !interiorActive && mode === 'roam') {
+  } else if (controls.isLocked && gameState === 'flying' && !interiorActive && mode === 'roam' && !roamSurfaceActive) {
     camera.getWorldDirection(tmp.fwd);
     tmp.right.crossVectors(tmp.fwd, camera.up).normalize();
     tmp.up.crossVectors(tmp.right, tmp.fwd).normalize();
@@ -1076,6 +1186,20 @@ function animate() {
     velocity.lerp(tmp.target, 1 - Math.pow(0.0008, dt));
     camera.position.addScaledVector(velocity, dt);
     totalDist += velocity.length() * dt;
+    // 实心天体碰撞：不让用户穿过星球（停在表面壳外，并抵消朝内的速度分量）
+    for (const L of LOCATIONS) {
+      if (!L._solid) continue;
+      const d = camera.position.distanceTo(L._pos);
+      const minD = L.radius * 1.04 + 8;
+      if (d < minD) {
+        _tmpVec.copy(camera.position).sub(L._pos);
+        if (_tmpVec.lengthSq() < 1e-6) _tmpVec.set(0, 1, 0);
+        _tmpVec.normalize();
+        camera.position.copy(L._pos).addScaledVector(_tmpVec, minD);
+        const vn = velocity.dot(_tmpVec);
+        if (vn < 0) velocity.addScaledVector(_tmpVec, -vn);
+      }
+    }
   }
   // 动效
   for (const L of LOCATIONS) {
@@ -1083,9 +1207,12 @@ function animate() {
     if (L._pulse) { const s = 1 + 0.03 * Math.sin(performance.now() * 0.001 + L._pulse); L._mesh.scale.setScalar(s); }
     if (L._spin) L._spin.rotation.y += dt * 0.3;
     if (L._clouds) L._clouds.rotation.y += dt * 0.02;
+    if (L._autoRotate && L._mesh && L._mesh.isMesh) L._mesh.rotation.y += dt * 0.012;
   }
   composer.render();
-  if (mode === 'expedition') updateExpedition(dt); else updateHUD();
+  if (mode === 'expedition') updateExpedition(dt);
+  else if (roamSurfaceActive) { exp.t += dt; updateSurface(dt); }
+  else updateHUD();
 }
 animate();
 
@@ -1102,6 +1229,8 @@ const PLANETS = {
     groundColor: '#a8552e', groundSpots: 80, hasAtmosphere: true,
     farColor: 0xc1440e, dust: true, dustColor: 0xe8c9a0, dustCount: 1300,
     extras: 'mars',
+    landTitle: '乌托邦平原',
+    landDesc: '反推引擎熄火，着陆腿稳稳触地。你站在了距地球数千万公里的红色星球上。这里的重力只有地球的 0.38——轻轻一跳，就能跃起近一米高。',
     craters: [[900, 400, 280], [-1500, -700, 380], [2200, 1900, 320], [-1000, 2400, 240], [3200, -1500, 300]],
     moons: [
       { r: 130, color: 0x8a8076, orbitR: 4600, h: 3600, spd: 0.05 },
@@ -1124,6 +1253,8 @@ const PLANETS = {
     sky: 0x05060a, fog: 0x0a0c12, fogDensity: 0.00018,
     groundColor: '#9a9a9a', groundSpots: 26, hasAtmosphere: false,
     farColor: 0xb9b6ad, dust: false, extras: 'moon',
+    landTitle: '静海基地',
+    landDesc: '引擎稳稳悬停，着陆支架轻触月壤。这里没有大气、没有风，天空永远漆黑。重力只有地球的 1/6，你可以像袋鼠一样蹦跳着前进。',
     craters: [[-1200, 800, 360], [1600, -1000, 420], [300, -2000, 300], [2400, 1600, 340], [-2600, -1400, 400], [800, 2600, 300], [-3400, 600, 460], [3200, -2600, 380], [-600, 3200, 320], [1400, 1200, 260]],
     moons: [],
     brief: `<p>目的地：<b>月球（Moon）</b>——距地球仅约 <b>38.4 万公里</b>，光走过去只要 1.3 秒。以第二宇宙速度直飞约 <b>3 天</b>即可抵达，是人类唯一踏足过的另一颗星球。</p>
@@ -1139,6 +1270,121 @@ const PLANETS = {
     ],
   },
 };
+
+/* ---------- 漫游模式可直接登陆的行星（含真实地标） ---------- */
+const LANDING = {
+  mercury: {
+    id: 'mercury', name: '水星', nameEn: 'Mercury', gravity: 13, gravLabel: '0.38g',
+    sky: 0x05060a, fog: 0x0a0a0e, fogDensity: 0.00016,
+    groundColor: '#8a7a68', groundSpots: 44, hasAtmosphere: false,
+    farColor: 0x8a7a68, dust: false, extras: null,
+    landTitle: '水星 · 卡洛里盆地边缘',
+    landDesc: '你降落在距太阳最近的行星上。这里几乎没有大气：白天被太阳烤到约 430℃、夜晚骤降至 -180℃，温差超过 600℃——太阳在天上显得比地球大两倍多。脚下是密布陨石坑的古老地壳。',
+    craters: [[1200, 900, 520], [-1800, -600, 620], [2400, 1700, 480], [-900, 2200, 420], [3200, -1100, 560], [-2600, -1500, 600]],
+    moons: [],
+    pois: [
+      { x: -1200, y: 110, z: -900, id: 'caloris', name: '卡洛里盆地', desc: '太阳系最大的撞击盆地之一，直径约 1550 公里。撞击冲击波在盆地对跖点激起崎岖的“混沌地形”。这里朝阳面正午温度足以熔化铅。' },
+      { x: 2600, y: 60, z: 1400, id: 'mercury-ice', name: '极区永夜冰', desc: '水星几乎没有自转轴倾角，两极陨石坑底部永远照不到阳光。NASA 的 MESSENGER 探测器在此发现水冰——在离太阳最近的星球上，竟藏着生命之源。' },
+      { x: 0, y: 40, z: 3200, id: 'mercury-valley', name: '水星大峡谷', desc: '一道绵延数百公里、深达数公里的裂谷，是这颗行星冷却收缩时地壳撕裂留下的伤疤，比美国大峡谷更庞大。' },
+    ],
+  },
+  venus: {
+    id: 'venus', name: '金星', nameEn: 'Venus', gravity: 26, gravLabel: '0.9g',
+    sky: 0xa9702f, fog: 0x9a6428, fogDensity: 0.0011,
+    groundColor: '#9a7a52', groundSpots: 32, hasAtmosphere: true,
+    farColor: 0xb98a4a, dust: false, extras: null,
+    landTitle: '金星 · 地狱平原',
+    landDesc: '你站在了太阳系最像地球的“恶魔双胞胎”上。这里气压是地球的 90 倍、温度约 460℃——铅都会熔化。厚重硫酸云把天空染成暗橙色；前苏联“金星9号”探测器曾在这里拍下人类第一批地外行星地表照片。',
+    craters: [],
+    moons: [],
+    pois: [
+      { x: -1800, y: 60, z: -1200, id: 'maat', name: '玛亚特山', desc: '金星上最高的火山之一，海拔约 8 公里。金星有超过 1600 座大型火山，是太阳系火山活动最活跃的世界（如今大多休眠）。' },
+      { x: 2200, y: 50, z: 1600, id: 'maxwell', name: '麦克斯韦山', desc: '金星最高峰，比周围平原高出约 11 公里，也是金星上唯一以男性（物理学家麦克斯韦）命名的地标。' },
+      { x: 0, y: 40, z: 3000, id: 'venera', name: '金星9号着陆点', desc: '1975 年，苏联“金星9号”成为首个从另一颗行星表面传回照片的探测器。它只坚持工作了约 53 分钟——便被 460℃ 的高温彻底烤毁。' },
+    ],
+  },
+  earth: {
+    id: 'earth', name: '地球', nameEn: 'Earth', gravity: 40, gravLabel: '1g',
+    sky: 0x6db4ff, fog: 0xa9c9ec, fogDensity: 0.00034,
+    groundColor: '#4a7a3a', groundSpots: 30, hasAtmosphere: true,
+    farColor: 0x2a6db4, dust: false, extras: null,
+    landTitle: '地球 · 蓝色故乡',
+    landDesc: '你回到了自己的母星。重力是熟悉的 1g，空气湿润，天空湛蓝。这片海岸平原草木葱茏——在浩瀚星海里，它是目前已知唯一孕育了生命的世界。',
+    craters: [],
+    moons: [{ r: 320, color: 0xcfcfcf, orbitR: 9000, h: 5200, spd: 0.02 }],
+    pois: [
+      { x: -2600, y: 60, z: -1800, id: 'everest', name: '珠穆朗玛峰', desc: '地球最高峰，海拔约 8849 米。它由印度板块与欧亚板块挤压隆起，至今仍以每年数毫米的速度长高。' },
+      { x: 2400, y: 40, z: 1400, id: 'grandcanyon', name: '科罗拉多大峡谷', desc: '历经约 600 万年科罗拉多河切割，深达 1.8 公里、绵延 446 公里，岩层像一本记录地球亿万年历史的书。' },
+      { x: 0, y: 50, z: 3200, id: 'amazon', name: '亚马逊雨林', desc: '地球之肺：占全球雨林一半以上，栖息着已知物种的约 10%，每天通过光合作用向大气释放海量氧气。' },
+    ],
+  },
+  pluto: {
+    id: 'pluto', name: '冥王星', nameEn: 'Pluto', gravity: 3, gravLabel: '0.06g',
+    sky: 0x06070d, fog: 0x090b14, fogDensity: 0.00014,
+    groundColor: '#b5a78c', groundSpots: 26, hasAtmosphere: false,
+    farColor: 0xb5a78c, dust: false, extras: null,
+    landTitle: '冥王星 · 斯普特尼克平原',
+    landDesc: '你站在了太阳系边缘的矮行星上。重力只有地球的 0.06——轻轻一蹬就能跳起数米高。脚下的氮冰平原构成著名的“心形”区域，而遥远的太阳只是一颗格外明亮的星星。',
+    craters: [[1400, 800, 360], [-1900, -700, 420], [2600, 1500, 300], [-800, 2100, 260], [3000, -1000, 340]],
+    moons: [{ r: 240, color: 0x9a8f82, orbitR: 7000, h: 3000, spd: 0.012 }],
+    pois: [
+      { x: -1400, y: 80, z: -1000, id: 'sputnik', name: '斯普特尼克平原', desc: '冥王星上最醒目的“心形”区域，由氮冰构成的盆地。新视野号发现它并非死寂——冰层下或许仍有微弱对流，像缓慢沸腾的粥。' },
+      { x: 2300, y: 60, z: 1500, id: 'tombaugh', name: '汤博区', desc: '以发现者克莱德·汤博命名的心形高地。1930 年他在一堆叠照片中辨认出这个移动的光点，冥王星才被人类认识。' },
+      { x: 0, y: 50, z: 3000, id: 'charon', name: '冥卫一 · 卡戎', desc: '冥王星最大的卫星，体积接近冥王星本身，二者相互潮汐锁定——永远以同一面朝向彼此，像跳着慢舞的双星。' },
+    ],
+  },
+  ceres: {
+    id: 'ceres', name: '谷神星', nameEn: 'Ceres', gravity: 2, gravLabel: '0.03g',
+    sky: 0x05060c, fog: 0x080a12, fogDensity: 0.00014,
+    groundColor: '#8a7a66', groundSpots: 30, hasAtmosphere: false,
+    farColor: 0x8a7a66, dust: false, extras: null,
+    landTitle: '谷神星 · 奥卡托陨石坑',
+    landDesc: '你降落在小行星带中最大的天体——一颗矮行星上。重力仅地球的 0.03，几乎像在漂浮。坑底那些亮白色的斑点，是咸水蒸发后留下的盐，暗示地下可能藏着液态卤水海洋。',
+    craters: [[1300, 700, 380], [-1700, -600, 440], [2400, 1400, 320], [-700, 1900, 260], [2800, -900, 340]],
+    moons: [],
+    pois: [
+      { x: -1300, y: 80, z: -900, id: 'occator', name: '奥卡托陨石坑', desc: '直径约 92 公里的撞击坑，坑底布满明亮的钠碳酸盐沉积（“亮斑”）。黎明号探测器确认这是地下卤水渗出、蒸发后留下的盐壳。' },
+      { x: 2200, y: 60, z: 1400, id: 'ahuna', name: '阿胡纳山', desc: '谷神星上唯一的“冰火山”：由咸水（而非熔岩）缓慢涌出、冻结堆叠而成，高约 4 公里，是太阳系最独特的山脉之一。' },
+      { x: 0, y: 50, z: 2900, id: 'ceres-belt', name: '小行星带', desc: '你身处火星与木星之间、由数百万块岩石碎块构成的环状带。谷神星是其中最大的一块——若把它凑齐，也仅占带总质量的小部分。' },
+    ],
+  },
+  europa: {
+    id: 'europa', name: '木卫二', nameEn: 'Europa', gravity: 6, gravLabel: '0.13g',
+    sky: 0x05070d, fog: 0x080b14, fogDensity: 0.00014,
+    groundColor: '#dde4ee', groundSpots: 18, hasAtmosphere: false,
+    farColor: 0xc9d4e4, dust: false, extras: null,
+    landTitle: '木卫二 · 冰原',
+    landDesc: '你站在木星的第四颗卫星上。脚下是厚达数公里的水冰壳，冰壳之下，藏着比地球所有海洋加起来还多的液态水——银河系中最有希望孕育生命的地方之一。',
+    craters: [[1200, 600, 260], [-1600, -500, 300], [2200, 1200, 220], [-700, 1700, 200]],
+    moons: [{ r: 900, color: 0xd9b48a, orbitR: 14000, h: 4000, spd: 0.03 }],
+    pois: [
+      { x: -1200, y: 60, z: -800, id: 'conamara', name: '科纳马拉混沌区', desc: '冰壳破裂、错位、重新冻结形成的杂乱地形，是冰下海洋活动曾经搅动地表的直接证据。' },
+      { x: 2100, y: 50, z: 1300, id: 'pwyll', name: '普威尔陨石坑', desc: '木卫二上最年轻的亮斑撞击坑之一，周围一圈明亮射线显示：冰壳表层极为新鲜，几乎没有被尘埃覆盖。' },
+      { x: 0, y: 50, z: 2900, id: 'europa-ocean', name: '冰下海洋', desc: '潮汐加热让冰壳下的海水保持液态。科学家推测：这里可能具备生命所需的能量、液态水和化学物质——是未来探测器的头号目标。' },
+    ],
+  },
+  enceladus: {
+    id: 'enceladus', name: '土卫二', nameEn: 'Enceladus', gravity: 1, gravLabel: '0.011g',
+    sky: 0x05070d, fog: 0x080b14, fogDensity: 0.00014,
+    groundColor: '#e6ebf0', groundSpots: 16, hasAtmosphere: false,
+    farColor: 0xd2dbe6, dust: false, extras: null,
+    landTitle: '土卫二 · 南极冰喷泉',
+    landDesc: '你降落在土星的一颗小卫星上，重力只有地球的 0.011——轻轻一碰地面就会飘起来。南极的裂隙正不断喷出含有水冰与有机物的喷泉，直冲数百公里高。',
+    craters: [[1000, 500, 220], [-1400, -400, 260], [2000, 1000, 180], [-600, 1500, 160]],
+    moons: [{ r: 1400, color: 0xe8d9a8, orbitR: 18000, h: 5000, spd: 0.025 }],
+    pois: [
+      { x: -1000, y: 60, z: -700, id: 'tiger', name: '南极虎纹裂隙', desc: '四条几乎平行的暗色裂缝，被称为“虎纹”。Cassini 探测器正是在这里发现：裂缝在不断喷出羽流——这是冰下海洋直通太空的窗口。' },
+      { x: 1900, y: 50, z: 1200, id: 'plume', name: '冰喷泉羽流', desc: '喷泉由水汽、冰粒和简单有机物组成，速度可达每秒数百米。卡西尼号曾穿过羽流采样，分析出类似深海热泉的化学成分。' },
+      { x: 0, y: 50, z: 2800, id: 'enc-ocean', name: '地下海洋', desc: '土卫二内部被土星引力潮汐加热，维持着全球性液态水海洋。它与木卫二并列，是太阳系最可能找到地外生命的热点。' },
+    ],
+  },
+};
+function getLandingConfig(L) {
+  if (L.id === 'mars') return PLANETS.mars;
+  if (L.id === 'moon') return PLANETS.moon;
+  return LANDING[L.id] || null;
+}
+
 const exp = {
   active: false, phase: 'pad', t: 0, alt: 0, reached: {}, achievements: new Set(),
   group: null, rocket: null, flame: null, flameOn: false, earth: null, marsFar: null,
@@ -1503,7 +1749,7 @@ function updateEDL(dt) {
 }
 function enterSurface() {
   exp.phase = 'surface'; exp.t = 0;
-  const pl = exp.targetPlanet;
+  const pl = exp.targetPlanet; exp.surfacePlanet = pl;
   unlockAch('land', `成功登陆${pl.name}`);
   const landDesc = pl.id === 'mars'
     ? '反推引擎熄火，着陆腿稳稳触地。你站在了距地球数千万公里的红色星球上。这里的重力只有地球的 0.38——轻轻一跳，就能跃起近一米高。'
@@ -1525,7 +1771,7 @@ function enterSurface() {
   expObj.textContent = `走向发光光柱，解锁${pl.name}地标（剩余 ${left} 处）· 按 P 拍明信片`;
 }
 function updateSurface(dt) {
-  const g = exp.targetPlanet.gravity;
+  const g = exp.surfacePlanet.gravity;
   camera.getWorldDirection(tmp.fwd);
   tmp.right.crossVectors(tmp.fwd, camera.up).normalize();
   const fwd = new THREE.Vector3(tmp.fwd.x, 0, tmp.fwd.z).normalize();
@@ -1552,7 +1798,63 @@ function updateSurface(dt) {
     if (p.beam) { p.beam.material.opacity = p.done ? 0.14 : 0.55; p.beam.scale.y = 1 + 0.1 * Math.sin(exp.t * 3 + p.x); }
   }
   const left = exp.pois.filter(p => !p.done).length;
-  expObj.textContent = left > 0 ? `走向发光光柱，解锁${exp.targetPlanet.name}地标（剩余 ${left} 处）· 按 P 拍明信片` : `✦ 全部地标已解锁！你已完成${exp.targetPlanet.name}巡视 🚀`;
+  expObj.textContent = left > 0 ? `走向发光光柱，解锁${exp.surfacePlanet.name}地标（剩余 ${left} 处）· 按 P 拍明信片` : `✦ 全部地标已解锁！你已完成${exp.surfacePlanet.name}巡视 🚀`;
+}
+
+/* ---------- 漫游模式：直接登陆行星表面探索 ---------- */
+function showRoamSurfaceUI(on) {
+  document.getElementById('hud').style.display = on ? 'none' : '';
+  document.getElementById('minimap-wrap').style.display = on ? 'none' : '';
+  document.getElementById('edge-markers').style.display = on ? 'none' : '';
+  document.getElementById('help').style.display = 'none';
+  expHud.style.display = on ? 'block' : 'none';
+  document.getElementById('exp-phase').style.display = on ? 'none' : '';
+  document.getElementById('exp-alt-box').style.display = on ? 'none' : '';
+  expSub.style.display = on ? 'none' : '';
+}
+const ROAM_HELP = 'WASD 行走 · 空格 跳跃 · 走向发光光柱解锁地标 · P 拍照寄回地球 · L 相册 · R 返航回到太空';
+function beginRoamLanding(L) {
+  const cfg = getLandingConfig(L);
+  if (!cfg) return;
+  exp.surfacePlanet = cfg;
+  exp.phase = 'surface'; exp.t = 0; exp.pois = [];
+  exp.player = { vy: 0, onGround: true };
+  roamExitPos.copy(camera.position);
+  landTarget = null;
+  roamSurfaceActive = true;
+  setRoamVisibility(false);
+  if (exp.group) scene.remove(exp.group);
+  exp.group = new THREE.Group(); scene.add(exp.group);
+  exp.moons = []; exp.earthSky = null; exp.dust = null;
+  buildPlanetSurface(exp.group, cfg);
+  scene.background = new THREE.Color(cfg.sky);
+  scene.fog = new THREE.FogExp2(cfg.fog, cfg.fogDensity);
+  camera.position.set(0, 18, 0);
+  camera.lookAt(0, 32, -220);
+  if (!controls.isLocked) { try { controls.lock(); } catch (e) {} }
+  showRoamSurfaceUI(true);
+  expHelp.textContent = ROAM_HELP;
+  hazardEl.style.opacity = '0'; hazardWarn.style.display = 'none';
+  document.body.classList.add('shake-land');
+  setTimeout(() => document.body.classList.remove('shake-land'), 720);
+  expMilestone(`着陆 · ${cfg.landTitle || cfg.name}`, cfg.landDesc || `你降落在了${cfg.name}表面。`);
+  const left = exp.pois.length;
+  expObj.textContent = `走向发光光柱，解锁${cfg.name}地标（剩余 ${left} 处）· 按 P 拍明信片 · 按 R 返航`;
+}
+function exitRoamSurface() {
+  roamSurfaceActive = false;
+  if (exp.group) { scene.remove(exp.group); exp.group = null; }
+  exp.moons = []; exp.earthSky = null; exp.dust = null; exp.pois = [];
+  setRoamVisibility(true);
+  scene.background = new THREE.Color(0x000006);
+  scene.fog = new THREE.FogExp2(0x000006, 0.0000008);
+  sunLight.intensity = 4.5;
+  camera.position.copy(roamExitPos);
+  camera.lookAt(roamExitPos.x, roamExitPos.y, roamExitPos.z - 100);
+  velocity.set(0, 0, 0);
+  showRoamSurfaceUI(false);
+  expHelp.innerHTML = DEFAULT_EXP_HELP;
+  if (!controls.isLocked) { try { controls.lock(); } catch (e) {} }
 }
 
 /* ---------- 字幕 / 成就 / 简报 ---------- */
@@ -1634,7 +1936,7 @@ document.getElementById('btn-ph-close').addEventListener('click', () => {
 document.getElementById('btn-eb-close').addEventListener('click', toggleExpBrief);
 // 远征中若误按 ESC 解锁指针，点击画面即可重新锁定
 renderer.domElement.addEventListener('click', () => {
-  if (mode === 'expedition' && !controls.isLocked && expBrief.style.display !== 'flex' && photoPanel.style.display !== 'flex') controls.lock();
+  if (!controls.isLocked && expBrief.style.display !== 'flex' && photoPanel.style.display !== 'flex' && (mode === 'expedition' || roamSurfaceActive)) controls.lock();
 });
 
 /* ---------- 语音播报 ---------- */
