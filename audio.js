@@ -494,6 +494,97 @@ export const Sound = (() => {
     o.start(t); o2.start(t); o.stop(t + dur + 0.05); o2.stop(t + dur + 0.05);
   }
 
+  // ---------- 持续氛围音乐：玩具风"今日状态"轻快循环（点火起进入，无限循环） ----------
+  // C 大调 I-V-vi-IV + 八分琶音 + 木鱼 + bell 点缀——童趣、玩具钢琴 / 八音盒感
+  let ambHandle = null;
+  function startAmbient() {
+    if (!ensure() || !enabled) return;
+    if (ambHandle) return;                       // 已经在播放
+    musicReady = true;
+    if (ctx.state === 'suspended') ctx.resume();
+    const t = ctx.currentTime;
+    const bus = ctx.createGain(); bus.gain.value = 0.0001; bus.connect(musicGain);
+    bus.gain.linearRampToValueAtTime(0.5, t + 2.5);    // 缓入
+    // 4 个和弦：Cmaj7 → G → Am7 → Fmaj7（明亮、童趣、玩具钢琴感）
+    const C  = [261.63, 329.63, 392.0, 493.88];
+    const G  = [196.0,  246.94, 293.66, 392.0];
+    const Am = [220.0,  261.63, 329.63, 440.0];
+    const F  = [174.61, 220.0,  261.63, 349.23];
+    const chords = [C, G, Am, F];
+    // 和弦铺底（triangle 音色、柔和）
+    const padOscs = [];
+    const padGain = ctx.createGain(); padGain.gain.value = 0.16; padGain.connect(bus);
+    chords[0].forEach(f => {
+      const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.value = f;
+      const og = ctx.createGain(); og.gain.value = 0.18; o.connect(og); og.connect(padGain);
+      o.start(t); padOscs.push(o);
+    });
+    // 4 拍换和弦（每拍 0.4s，BPM≈75）
+    const beat = 0.4;
+    const padNoteCount = chords[0].length;        // 4 音
+    let step = 0;
+    // 琶音 lead（8 分音符上行循环）
+    const arpOscs = [];
+    for (let i = 0; i < 3; i++) {
+      const o = ctx.createOscillator(); o.type = 'square';
+      const g = ctx.createGain(); g.gain.value = 0.0001;
+      const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 2600;
+      o.connect(f); f.connect(g); g.connect(bus);
+      o.start(t); arpOscs.push({ o, g, f });
+    }
+    const arpNotes = [523.25, 659.25, 783.99, 659.25, 587.33, 659.25, 783.99, 1046.5];   // C5 E5 G5 E5 D5 E5 G5 C6
+    const arpTimer = setInterval(() => {
+      if (!ambHandle) return;
+      const now = ctx.currentTime;
+      const fr = arpNotes[step % arpNotes.length];
+      const slot = step % 3;
+      const x = arpOscs[slot];
+      x.o.frequency.setValueAtTime(fr, now);
+      x.g.gain.cancelScheduledValues(now);
+      x.g.gain.setValueAtTime(0.0001, now);
+      x.g.gain.exponentialRampToValueAtTime(0.07, now + 0.01);
+      x.g.gain.exponentialRampToValueAtTime(0.0001, now + 0.32);
+      // 每 4 拍换和弦
+      if (step % 4 === 0) {
+        const idx = Math.floor(step / 4) % chords.length;
+        const chord = chords[idx];
+        const tt = now;
+        padOscs.forEach((o, i) => {
+          const target = chord[i] || chord[chord.length - 1];
+          o.frequency.setTargetAtTime(target, tt, 0.08);
+        });
+      }
+      // 每小节末点缀：八音盒铃
+      if (step % 8 === 4) bell(1046.5, now, 0.4, 0.06, bus);
+      if (step % 8 === 7) bell(1318.5, now, 0.5, 0.05, bus);
+      step++;
+    }, beat * 1000);
+    // 轻木鱼：每 2 拍一次
+    const woodTimer = setInterval(() => {
+      if (!ambHandle) return;
+      const now = ctx.currentTime;
+      const o = ctx.createOscillator(); o.type = 'sine';
+      o.frequency.setValueAtTime(380, now); o.frequency.exponentialRampToValueAtTime(80, now + 0.08);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, now); g.gain.exponentialRampToValueAtTime(0.07, now + 0.005); g.gain.exponentialRampToValueAtTime(0.0008, now + 0.12);
+      o.connect(g); g.connect(bus); o.start(now); o.stop(now + 0.14);
+    }, beat * 2 * 1000);
+    ambHandle = { bus, padGain, padOscs, arpOscs, arpTimer, woodTimer };
+  }
+  function stopAmbient() {
+    if (!ambHandle) return;
+    const h = ambHandle; ambHandle = null;
+    clearInterval(h.arpTimer); clearInterval(h.woodTimer);
+    const t = ctx.currentTime;
+    h.bus.gain.cancelScheduledValues(t);
+    h.bus.gain.setValueAtTime(h.bus.gain.value, t);
+    h.bus.gain.linearRampToValueAtTime(0.0001, t + 1.4);
+    setTimeout(() => {
+      try { h.padOscs.forEach(o => { try { o.stop(); } catch (e) {} }); h.arpOscs.forEach(x => { try { x.o.stop(); } catch (e) {} }); } catch (e) {}
+      try { h.bus.disconnect(); h.padGain.disconnect(); } catch (e) {}
+    }, 1600);
+  }
+
   // ---------- 总开关 ----------
   function setEnabled(b) {
     enabled = b; ensure();
@@ -512,6 +603,7 @@ export const Sound = (() => {
     gearShift, land, jump, footstep, photo, achievement, poi, entryHiss, ui,
     cueArrival, cueEarth, cueEpic,
     rocketRoar, rocketRoarStop, startCinematic, stopCinematic,
+    startAmbient, stopAmbient,
     setEnabled, toggle, isEnabled: () => enabled, armMusic,
   };
 })();
