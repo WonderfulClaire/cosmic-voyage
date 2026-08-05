@@ -1,6 +1,6 @@
 // COSMIC VOYAGE — Service Worker
 // 同源静态资源缓存：重复访问秒开、源站带宽大幅下降、断网也能进首页。
-const CACHE = 'cosmic-v7';   // bump: 操作指南重做为居中有界卡片 + 不再自动霸屏 + 5 种关法
+const CACHE = 'cosmic-v8';   // bump: 修复 musicGain 恒为 0 导致开场/玩具音乐全静音 + 音频解锁兜底
 const CORE = [
   './index.html',
   './styles.css',
