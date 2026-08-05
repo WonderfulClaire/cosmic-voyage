@@ -3063,13 +3063,15 @@ document.getElementById('je-return').addEventListener('click', () => {
   else endExpedition();
 });
 
-document.getElementById('btn-expedition').addEventListener('click', () => {
-  try { Sound.resume(); Sound.armMusic(); } catch (e) {}
+document.getElementById('btn-expedition').addEventListener('click', (e) => {
+  console.log('[cosmic] 星际远征 clicked · v5+', { target: e.target.id });
+  try { Sound.resume(); Sound.armMusic(); } catch (e) { console.warn('[cosmic] sound err', e); }
   const dest = document.getElementById('exp-dest');
   if (dest) dest.style.display = 'flex';
+  else console.error('[cosmic] #exp-dest not found');
   document.getElementById('blocker').style.display = 'none'; // 收起开场遮罩，避免遮挡任务卡
-  if (helpAutoTimer) clearTimeout(helpAutoTimer);
-  helpPanel.style.display = 'none';
+  if (typeof helpAutoTimer !== 'undefined' && helpAutoTimer) clearTimeout(helpAutoTimer);
+  if (typeof helpPanel !== 'undefined' && helpPanel) helpPanel.style.display = 'none';
 });
 document.querySelectorAll('.ed-mission').forEach(b => b.addEventListener('click', () => startExpedition(b.dataset.mission)));
 document.getElementById('btn-ed-close').addEventListener('click', () => {
