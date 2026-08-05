@@ -1164,7 +1164,18 @@ function updateHUD() {
   updateEdgeMarkers();
   if (mode === 'roam' && !roamSurfaceActive && !interiorActive) updateHazard();
 }
-function toggleHelp() { helpPanel.style.display = helpPanel.style.display === 'none' ? 'block' : 'none'; }
+function toggleHelp(force) {
+  if (force === true) helpPanel.style.display = 'block';
+  else if (force === false) helpPanel.style.display = 'none';
+  else helpPanel.style.display = helpPanel.style.display === 'none' ? 'block' : 'none';
+}
+let helpAutoTimer = null;
+// 进入漫游后，操作指南先显示一会儿再自动收起，避免挡住视野；常驻 ❔ 按钮可随时再开
+function autoHideHelp(delay = 7000) {
+  if (helpAutoTimer) clearTimeout(helpAutoTimer);
+  helpPanel.style.display = 'block';
+  helpAutoTimer = setTimeout(() => { helpPanel.style.display = 'none'; }, delay);
+}
 function toggleCard() {
   if (card.style.display === 'flex') { card.style.display = 'none'; return; }
   if (!nearest) return;
@@ -1416,6 +1427,7 @@ function startCountdown() {
   if (gameState === 'countdown' || gameState === 'flying' || gameState === 'returning') return;
   gameState = 'countdown';
   blocker.style.display = 'none';
+  autoHideHelp(7000);   // 操作指南先显示 7 秒再自动收起
   controls.lock();
   launchEl.style.display = 'flex';
   const seq = ['3', '2', '1', '🔥 点火'];
@@ -2530,7 +2542,7 @@ function startExpedition(missionId) {
   camera.position.set(190, 130, 380);
   camera.lookAt(0, 170, 0);
   gameState = 'flying';
-  controls.lock();
+  try { controls.lock(); } catch (e) { console.warn('pointer lock failed, continue', e); }
   // 任务线专属简报（用 mission.intro 替换通用 brief）
   document.getElementById('eb-title').textContent = `${mission.icon} ${mission.name} · 任务简报`;
   document.getElementById('eb-body').innerHTML = mission.intro;
@@ -2910,6 +2922,9 @@ document.getElementById('btn-expedition').addEventListener('click', () => {
   Sound.resume(); Sound.armMusic();
   const dest = document.getElementById('exp-dest');
   if (dest) dest.style.display = 'flex';
+  document.getElementById('blocker').style.display = 'none'; // 收起开场遮罩，避免遮挡任务卡
+  if (helpAutoTimer) clearTimeout(helpAutoTimer);
+  helpPanel.style.display = 'none';
 });
 document.querySelectorAll('.ed-mission').forEach(b => b.addEventListener('click', () => startExpedition(b.dataset.mission)));
 document.getElementById('btn-ed-close').addEventListener('click', () => {
@@ -2930,6 +2945,9 @@ document.getElementById('sound-btn').addEventListener('click', () => {
   const on = Sound.toggle();
   document.getElementById('sound-btn').textContent = on ? '🔊' : '🔇';
 });
+// 操作指南：× 关闭、❔ 切换、H 键也行
+document.getElementById('help-close').addEventListener('click', () => { if (helpAutoTimer) clearTimeout(helpAutoTimer); helpPanel.style.display = 'none'; });
+document.getElementById('help-btn').addEventListener('click', () => { if (helpAutoTimer) clearTimeout(helpAutoTimer); toggleHelp(); });
 
 /* ---------- 语音播报 ---------- */
 function speak(t) {
