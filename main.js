@@ -2667,8 +2667,18 @@ function startExpedition(missionId) {
   expMilestone(`${mission.name} · 任务简报`, `${mission.tag}。你站在发射台上，前方就是这次任务的全部故事。按 M 随时调出简报，按 P 可拍照寄回地球。`);
   // 任务线专属成就：选了一支任务线
   unlockAch('mission_' + mission.id, '任务线 · ' + mission.name);
-  Sound.rocketRoar();    // 点火：引擎轰鸣贯穿整个升空阶段
-  runExpCountdown();
+  try {
+    Sound.rocketRoar();    // 点火：引擎轰鸣贯穿整个升空阶段
+    runExpCountdown();
+  } catch (e) {
+    console.error('expedition start failed', e);
+    const d = document.createElement('div'); d.className = 'exp-toast';
+    d.textContent = '⚠ 启动异常，请重新选择任务线'; expToasts.appendChild(d);
+    setTimeout(() => d.remove(), 3200);
+    // 把任务卡重新弹回，让用户可重试
+    const dest = document.getElementById('exp-dest'); if (dest) dest.style.display = 'flex';
+    document.getElementById('blocker').style.display = 'none';
+  }
 }
 function runExpCountdown() {
   const launchEl = document.getElementById('launch');
@@ -2926,7 +2936,16 @@ function unlockAch(id, label) {
   if (id !== 'land' && exp.pois.length && exp.pois.every(p => p.done)) Sound.cueEpic();
 }
 function phaseLabel(p) {
-  return { pad: '发射台', countdown: '倒计时', ascent: '升空', orbit: '近地轨道 · 失重', transit: '地火巡航', edl: '进入火星大气', surface: '火星地表探索' }[p] || '';
+  const tp = exp.targetPlanet;
+  const name = tp ? tp.name : '火星';
+  const airless = tp ? !tp.hasAtmosphere : false;
+  return {
+    pad: '发射台', countdown: '倒计时', ascent: '升空',
+    orbit: '近地轨道 · 失重',
+    transit: `星际巡航 · 飞向${name}`,
+    edl: airless ? `接近${name} · 悬停着陆` : `进入${name}大气`,
+    surface: airless ? `${name}表面探索` : `${name}地表探索`,
+  }[p] || '';
 }
 function updateExpeditionHUD() {
   expPhaseEl.textContent = phaseLabel(exp.phase);
@@ -3034,10 +3053,16 @@ document.getElementById('je-explore').addEventListener('click', () => {
   hideJourneyEnd();
   if (!controls.isLocked) { try { controls.lock(); } catch (e) {} }
 });
-document.getElementById('je-return').addEventListener('click', () => { hideJourneyEnd(); endExpedition(); });
+document.getElementById('je-return').addEventListener('click', () => {
+  hideJourneyEnd();
+  // 漫游地表通关后 mode 仍是 'roam'，endExpedition 会因 mode 校验直接 return，
+  // 必须按当前所在模式分别回到太空
+  if (roamSurfaceActive) exitRoamSurface();
+  else endExpedition();
+});
 
 document.getElementById('btn-expedition').addEventListener('click', () => {
-  Sound.resume(); Sound.armMusic();
+  try { Sound.resume(); Sound.armMusic(); } catch (e) {}
   const dest = document.getElementById('exp-dest');
   if (dest) dest.style.display = 'flex';
   document.getElementById('blocker').style.display = 'none'; // 收起开场遮罩，避免遮挡任务卡
