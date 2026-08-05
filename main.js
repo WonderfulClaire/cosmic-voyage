@@ -755,16 +755,21 @@ function updateHazard() {
     if (d < h.range && d < hd) { hd = d; hp = h; }
   }
   if (hp) {
-    const intensity = Math.min(1, Math.max(0, 1 - hd / hp.range));
-    const a = intensity * intensity * 0.82;
-    hazardEl.style.background = `radial-gradient(circle at 50% 50%, rgba(0,0,0,0) 36%, rgba(${hp.color}, ${a.toFixed(3)}) 100%)`;
-    hazardEl.style.opacity = '1';
-    if (intensity > 0.12) {
+    const intensity = Math.min(1, Math.max(0, 1 - hd / hp.range)); // 0=边缘 → 1=正中
+    // 仅当非常靠近（进入危险范围前 ~50%）才给一点轻提示，避免满屏常驻报警（它只是个趣味小点）
+    if (intensity > 0.5) {
+      const a = (intensity - 0.5) / 0.5;            // 0→1
+      const glow = (a * 0.28).toFixed(3);           // 最弱→最强仅 0.28，且只晕在屏幕最外缘
+      hazardEl.style.background = `radial-gradient(circle at 50% 50%, rgba(0,0,0,0) 54%, rgba(${hp.color}, ${glow}) 100%)`;
+      hazardEl.style.opacity = '1';
       hazardWarn.style.display = 'block';
       hazardWarn.textContent = `⚠ ${hp.label}`;
       hazardWarn.style.color = `rgb(${hp.color})`;
-      hazardWarn.style.textShadow = `0 0 12px rgba(${hp.color},0.8)`;
-    } else hazardWarn.style.display = 'none';
+      hazardWarn.style.textShadow = `0 0 10px rgba(${hp.color},0.5)`;
+    } else {
+      hazardEl.style.opacity = '0';
+      hazardWarn.style.display = 'none';
+    }
   } else {
     hazardEl.style.opacity = '0';
     hazardWarn.style.display = 'none';
@@ -1275,6 +1280,7 @@ function updateHUD() {
   drawMinimap();
   updateEdgeMarkers();
   if (mode === 'roam' && !roamSurfaceActive && !interiorActive) updateHazard();
+  else { hazardEl.style.opacity = '0'; hazardWarn.style.display = 'none'; }
 }
 function toggleHelp(force) {
   if (force === true) helpPanel.style.display = 'block';
