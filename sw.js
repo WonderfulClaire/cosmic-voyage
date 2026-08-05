@@ -1,6 +1,7 @@
 // COSMIC VOYAGE — Service Worker
 // 同源静态资源缓存：重复访问秒开、源站带宽大幅下降、断网也能进首页。
-const CACHE = 'cosmic-v8';   // bump: 修复 musicGain 恒为 0 导致开场/玩具音乐全静音 + 音频解锁兜底
+// v9: 缓存命名带 v9；HTML 用 ?v=9 cache-busting 强制刷新；activate 阶段彻底清掉旧版本。
+const CACHE = 'cosmic-v9';
 const CORE = [
   './index.html',
   './styles.css',
@@ -29,9 +30,18 @@ self.addEventListener('install', (e) => {
 self.addEventListener('activate', (e) => {
   e.waitUntil((async () => {
     const keys = await caches.keys();
+    // 删掉所有非当前 CACHE 的旧缓存（不仅是 v8，包括更早的 v1~v7）
     await Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)));
     await self.clients.claim();
+    // 通知所有客户端：SW 已升级，强制 reload
+    const clients = await self.clients.matchAll({ type: 'window' });
+    clients.forEach(c => c.postMessage({ type: 'SW_UPDATED', cache: CACHE }));
   })());
+});
+
+self.addEventListener('message', (e) => {
+  // 客户端可发 SKIP_WAITING 强制激活新 SW
+  if (e.data === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('fetch', (e) => {
@@ -40,7 +50,7 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return; // 仅缓存同源资源
 
-  // HTML 导航：网络优先，失败回退缓存（离线可进首页）
+  // HTML 导航：网络优先（保证拿到最新 HTML），失败回退缓存（离线可进首页）
   if (req.mode === 'navigate') {
     e.respondWith((async () => {
       try {
