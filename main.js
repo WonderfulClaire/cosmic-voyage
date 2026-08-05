@@ -1508,6 +1508,7 @@ function endExpedition() {
   scene.background = new THREE.Color(0x000006);
   scene.fog = new THREE.FogExp2(0x000006, 0.0000008);
   sunLight.intensity = 4.5;
+  if (controls.isLocked) controls.unlock();
   showExpeditionUI(false);
   expBrief.style.display = 'none';
   camera.position.set(3450, 220, 520);
@@ -1520,6 +1521,10 @@ function endExpedition() {
 
 document.getElementById('btn-expedition').addEventListener('click', startExpedition);
 document.getElementById('btn-eb-close').addEventListener('click', toggleExpBrief);
+// 远征中若误按 ESC 解锁指针，点击画面即可重新锁定
+renderer.domElement.addEventListener('click', () => {
+  if (mode === 'expedition' && !controls.isLocked && expBrief.style.display !== 'flex') controls.lock();
+});
 
 /* ---------------- 自适应 ---------------- */
 addEventListener('resize', () => {
