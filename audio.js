@@ -16,6 +16,7 @@ export const Sound = (() => {
   let curAmb = null;          // { gain, nodes:[], id, stop() }
   let warp = null;            // 连续引擎嗡鸣 { osc, filt, gain }
   let lastEnv = null;
+  let bedActive = false;        // 是否有持续音乐床（cinematic / ambient）正在播放
 
   // ---------- 基础 ----------
   function ensure() {
@@ -241,7 +242,7 @@ export const Sound = (() => {
     const arp = [523.25, 659.25, 783.99, 1046.5];
     arp.forEach((fr, i) => lead(t + i * 0.32, fr, 0.5));
     kick(t);
-    setTimeout(() => fadeMusic(0, 1.4), 3400);
+    setTimeout(() => fadeMusic(bedActive ? 1.0 : 0, 1.4), 3400);
   }
   // 地球登场：更恢弘的 I–V–vi–IV（C–G–Am–F）铺陈 + 上行琶音 + 四次底鼓 —— 我的“审美招牌”
   function cueEarth() {
@@ -257,7 +258,7 @@ export const Sound = (() => {
     const arp = [523.25, 659.25, 783.99, 1046.5, 783.99, 659.25, 587.33, 659.25, 783.99, 1046.5, 1318.5];
     arp.forEach((fr, i) => lead(t + i * 0.62, fr, 0.55, i > 7 ? 0.2 : 0.16));
     for (let i = 0; i < 5; i++) kick(t + i * 2.1, i === 4 ? 0.6 : 0.45);
-    setTimeout(() => fadeMusic(0, 1.8), 9200);
+    setTimeout(() => fadeMusic(bedActive ? 1.0 : 0, 1.8), 9200);
   }
   // 重大时刻（首登/全地标解锁）：在地球动机上叠加高八度闪亮尾奏
   function cueEpic() {
@@ -275,7 +276,7 @@ export const Sound = (() => {
     for (let i = 0; i < 5; i++) kick(t + i * 2.2, 0.5);
     // 闪亮尾奏（高频铃）
     [1567.98, 2093.0, 2637.0].forEach((fr, i) => lead(t + 8.6 + i * 0.18, fr, 1.2, 0.12));
-    setTimeout(() => fadeMusic(0, 2.0), 10400);
+    setTimeout(() => fadeMusic(bedActive ? 1.0 : 0, 2.0), 10400);
   }
 
   // ---------- 开场宣传片：持续的、克制的希望感音垫 ----------
@@ -283,7 +284,9 @@ export const Sound = (() => {
   function startCinematic() {
     if (!ensure()) return;
     musicReady = true;
+    bedActive = true;
     if (ctx.state === 'suspended') ctx.resume();
+    fadeMusic(1.0, 3.5);   // 拉起音乐总线（此前恒为 0 → 整段开场音乐被静音）
     if (cineHandle) return;                       // 已经在进行
     const t = ctx.currentTime;
     const bus = ctx.createGain(); bus.gain.value = 0.0001; bus.connect(musicGain);
@@ -327,6 +330,7 @@ export const Sound = (() => {
   function stopCinematic() {
     if (!cineHandle) return;
     const h = cineHandle; cineHandle = null;
+    bedActive = false; fadeMusic(0, 1.4);
     clearTimeout(h.timer);
     const t = ctx.currentTime;
     h.bus.gain.cancelScheduledValues(t);
@@ -501,7 +505,9 @@ export const Sound = (() => {
     if (!ensure() || !enabled) return;
     if (ambHandle) return;                       // 已经在播放
     musicReady = true;
+    bedActive = true;
     if (ctx.state === 'suspended') ctx.resume();
+    fadeMusic(1.0, 2.5);   // 拉起音乐总线，玩具循环才能出声
     const t = ctx.currentTime;
     const bus = ctx.createGain(); bus.gain.value = 0.0001; bus.connect(musicGain);
     bus.gain.linearRampToValueAtTime(0.5, t + 2.5);    // 缓入
@@ -573,6 +579,7 @@ export const Sound = (() => {
   }
   function stopAmbient() {
     if (!ambHandle) return;
+    bedActive = false; fadeMusic(0, 1.4);
     const h = ambHandle; ambHandle = null;
     clearInterval(h.arpTimer); clearInterval(h.woodTimer);
     const t = ctx.currentTime;
