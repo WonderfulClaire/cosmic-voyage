@@ -477,3 +477,18 @@ body.returning #scene { animation: shake 0.5s linear 3; }
 
 /* ---------- 着陆震屏 ---------- */
 body.shake-land #scene { animation: shake 0.5s linear 3; }
+
+/* ---------- 危险天体邻近预警 ---------- */
+#hazard {
+  position: fixed; inset: 0; z-index: 8; pointer-events: none; opacity: 0;
+  transition: opacity .3s;
+}
+#hazard-warn {
+  position: fixed; left: 50%; top: 12%; transform: translateX(-50%);
+  z-index: 9; display: none; font-size: 17px; font-weight: 800; letter-spacing: 2px;
+  padding: 8px 22px; border-radius: 999px;
+  background: rgba(8, 4, 12, 0.5); border: 1px solid rgba(255, 120, 80, 0.5);
+  backdrop-filter: blur(3px);
+  animation: hazardPulse 1.4s ease-in-out infinite;
+}
+@keyframes hazardPulse { 0%, 100% { opacity: 0.65; } 50% { opacity: 1; } }
