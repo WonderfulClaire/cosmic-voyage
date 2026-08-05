@@ -42,28 +42,37 @@
       <button id="sound-btn" title="声音开关 (M)">🔊</button>
     </div>
 
+    <div id="help-backdrop"></div>
     <div id="help">
-      <button id="help-close" title="关闭指南 (H)">×</button>
-      <div class="help-title">操作指南</div>
-      <div><b>W / S</b> 前进 / 后退</div>
-      <div><b>A / D</b> 左右平移</div>
-      <div><b>空格 / C</b> 上升 / 下降</div>
-      <div><b>鼠标</b> 转动视角（点击画面锁定）</div>
-      <div><b>[ / ]</b> 切换速度档位（滑行·巡航·标准·加速·跃迁）</div>
-      <div><b>E</b> 靠近天体查看科普</div>
-      <div><b>F</b> 进入 / 离开空间站舱内</div>
-      <div><b>G</b> 星图航图 · 跃迁到十大区域</div>
-      <div><b>B</b> 宇宙图鉴 · 查看探索进度</div>
-      <div><b>M</b> / 🔊 声音开关 · 科学音效 + 激动人心的配乐（真空里默认静默，只有飞船系统声；有大气才听得见风）</div>
-      <div><b>星图雷达</b> 右下角小地图 + 边缘箭头指引方向</div>
-      <div><b>X</b> 飞近可登陆世界按 X 着陆漫步——地球（含长城·埃菲尔·金字塔等真实地标）、各行星/卫星/矮行星、比邻星 b 等系外行星、小行星带；气态巨行星则进入「☁ 云顶漂浮」</div>
-      <div><b>R</b> 结束任务 · 返航结算（地表探索中按 R 返航回到太空）</div>
-      <div><b>ESC</b> 暂停任务</div>
-      <div><b>P</b> 拍照 · 寄回地球的明信片</div>
-      <div><b>L</b> 打开 / 关闭明信片相册</div>
-      <div>💥 实心星球无法穿过，靠近会被挡在外层壳</div>
-      <div>🔥 靠近高温恒星 / 强辐射 / 极寒天体，屏幕边缘会变色预警</div>
-      <div class="help-tip">飞向发光的天体就能学到知识</div>
+      <div class="help-head">
+        <div class="help-title">操作指南</div>
+        <button id="help-close" title="关闭（Esc / H）">×</button>
+      </div>
+      <div class="help-body">
+        <div><b>W / S</b> 前进 / 后退</div>
+        <div><b>A / D</b> 左右平移</div>
+        <div><b>空格 / C</b> 上升 / 下降</div>
+        <div><b>鼠标</b> 转动视角（点击画面锁定）</div>
+        <div><b>[ / ]</b> 切换速度档位（滑行·巡航·标准·加速·跃迁）</div>
+        <div><b>E</b> 靠近天体查看科普</div>
+        <div><b>F</b> 进入 / 离开空间站舱内</div>
+        <div><b>G</b> 星图航图 · 跃迁到十大区域</div>
+        <div><b>B</b> 宇宙图鉴 · 查看探索进度</div>
+        <div><b>M</b> / 🔊 声音开关 · 科学音效 + 激动人心的配乐（真空里默认静默，只有飞船系统声；有大气才听得见风）</div>
+        <div><b>星图雷达</b> 右下角小地图 + 边缘箭头指引方向</div>
+        <div><b>X</b> 飞近可登陆世界按 X 着陆漫步——地球（含长城·埃菲尔·金字塔等真实地标）、各行星/卫星/矮行星、比邻星 b 等系外行星、小行星带；气态巨行星则进入「☁ 云顶漂浮」</div>
+        <div><b>R</b> 结束任务 · 返航结算（地表探索中按 R 返航回到太空）</div>
+        <div><b>ESC</b> 暂停任务</div>
+        <div><b>P</b> 拍照 · 寄回地球的明信片</div>
+        <div><b>L</b> 打开 / 关闭明信片相册</div>
+        <div>💥 实心星球无法穿过，靠近会被挡在外层壳</div>
+        <div>🔥 靠近高温恒星 / 强辐射 / 极寒天体，屏幕边缘会变色预警</div>
+        <div class="help-tip">飞向发光的天体就能学到知识</div>
+      </div>
+      <div class="help-foot">
+        <span class="help-hint">按 <b>H</b> 或 <b>Esc</b> 也能关闭</span>
+        <button id="help-ok">知道了，开始探索 →</button>
+      </div>
     </div>
 
     <!-- 星图雷达 + 边缘方向指示 -->
