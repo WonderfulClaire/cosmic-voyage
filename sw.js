@@ -1,6 +1,6 @@
 // COSMIC VOYAGE — Service Worker
 // 同源静态资源缓存：重复访问秒开、源站带宽大幅下降、断网也能进首页。
-const CACHE = 'cosmic-v5';   // bump: 强制刷新 main.js 拿到带渐变星球渲染
+const CACHE = 'cosmic-v6';   // bump: 修复 help 拦截按钮 click + 远征入口日志诊断
 const CORE = [
   './index.html',
   './styles.css',
