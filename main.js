@@ -5,6 +5,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { LOCATIONS, ZONES, INTRO } from './knowledge.js';
+import { Sound } from './audio.js';
 
 /* ---------------- 渲染器 / 场景 / 相机 ---------------- */
 const canvas = document.getElementById('scene');
@@ -39,6 +40,7 @@ let mode = 'roam';                // 'roam' | 'expedition'（火星远征剧情�
 let roamSurfaceActive = false;    // 漫游中是否正处于某行星地表探索
 const roamExitPos = new THREE.Vector3();
 let landTarget = null;            // 漫游中可着陆的邻近行星
+let prevLandId = null;            // 上一帧锁定的可着陆行星（用于触发抵达音乐）
 const _tmpVec = new THREE.Vector3();
 const hazardEl = document.getElementById('hazard');
 const hazardWarn = document.getElementById('hazard-warn');
@@ -677,6 +679,7 @@ composer.addPass(bloom);
 const keys = {};
 addEventListener('keydown', e => {
   keys[e.code] = true;
+  Sound.resume();
   if (e.code === 'KeyP') { takePhoto(); return; }
   if (e.code === 'KeyL') { togglePhotoPanel(); return; }
   // 行星地表探索中：仅响应离开键
@@ -705,6 +708,7 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyG') toggleStarChart();
   if (e.code === 'KeyB') toggleCodex();
   if (e.code === 'KeyF') toggleInterior();
+  if (e.code === 'KeyM') { const on = Sound.toggle(); const sb = document.getElementById('sound-btn'); if (sb) sb.textContent = on ? '🔊' : '🔇'; return; }
   if (e.code === 'BracketLeft') cycleGear(-1);
   if (e.code === 'BracketRight') cycleGear(1);
 });
@@ -797,6 +801,9 @@ function updateHUD() {
   hudSpeed.textContent = `速度 ${Math.round(v)} u/s`;
   hudGear.textContent = `档位 ${SPEED_GEARS[gearIndex].name}`;
   hudPos.textContent = `坐标 ${Math.round(camera.position.x)}, ${Math.round(camera.position.y)}, ${Math.round(camera.position.z)}`;
+  // 引擎嗡鸣随速度与档位变化（真空里只听得见你自己飞船的系统声——科学设定）
+  const moving = keys['KeyW'] || keys['KeyS'] || keys['KeyA'] || keys['KeyD'] || keys['Space'] || keys['KeyC'] || keys['ControlLeft'];
+  Sound.setWarp((moving ? 0.35 : 0.07) + gearIndex / (SPEED_GEARS.length - 1) * 0.45);
   // nearest（仅当前区域）
   let best = null, bestD = Infinity;
   for (const L of LOCATIONS) {
@@ -830,6 +837,11 @@ function updateHUD() {
       if (L._landable && camera.position.distanceTo(L._pos) < L.radius * 1.9 + 520) { landTarget = L; break; }
     }
   }
+  // 首次锁定可登陆行星：奏响“抵达动机”（地球用更恢弘的招牌主题）
+  if (landTarget && landTarget.id !== prevLandId) {
+    if (landTarget.id === 'earth') Sound.cueEarth(); else Sound.cueArrival();
+  }
+  prevLandId = landTarget ? landTarget.id : null;
   updateEnterPrompt();
   drawMinimap();
   updateEdgeMarkers();
@@ -1078,7 +1090,7 @@ const missionReturn = document.getElementById('mission-return');
 const mrStats = document.getElementById('mr-stats');
 const mrList = document.getElementById('mr-list');
 
-document.getElementById('btn-launch').addEventListener('click', startCountdown);
+document.getElementById('btn-launch').addEventListener('click', () => { Sound.resume(); Sound.armMusic(); startCountdown(); });
 document.getElementById('btn-resume').addEventListener('click', () => controls.lock());
 document.getElementById('btn-return').addEventListener('click', triggerReturn);
 document.getElementById('btn-relaunch').addEventListener('click', () => { resetMission(); startCountdown(); });
@@ -1105,6 +1117,8 @@ function doIgnition() {
   gameState = 'flying';
   missionStart = performance.now();
   totalDist = 0;
+  Sound.setEnvironment('space');
+  Sound.setWarp(0);
   velocity.copy(camera.getWorldDirection(new THREE.Vector3())).multiplyScalar(1700);
   fovTarget = 108;
   document.body.classList.add('launching');
@@ -1165,6 +1179,7 @@ const SPEED_GEARS = [
 let gearIndex = 2;
 function cycleGear(dir) {
   gearIndex = Math.max(0, Math.min(SPEED_GEARS.length - 1, gearIndex + dir));
+  Sound.gearShift(gearIndex);
 }
 const tmp = { fwd: new THREE.Vector3(), right: new THREE.Vector3(), up: new THREE.Vector3(), accel: new THREE.Vector3(), target: new THREE.Vector3() };
 const clock = new THREE.Clock();
@@ -2065,6 +2080,10 @@ function enterSurface() {
   if (!controls.isLocked) { try { controls.lock(); } catch (e) {} }
   showZeroG(false);
   document.body.classList.add('shake-land');
+  Sound.setEnvironment(pl.id === 'mars' ? 'mars' : 'airless');
+  Sound.setWarp(0);
+  if (pl.id === 'mars') Sound.entryHiss();
+  setTimeout(() => Sound.land(pl.id !== 'mars'), 700);
   setTimeout(() => document.body.classList.remove('shake-land'), 720);
   const left = exp.pois.length;
   expObj.textContent = `走向发光光柱，解锁${pl.name}地标（剩余 ${left} 处）· 按 P 拍明信片`;
@@ -2082,10 +2101,15 @@ function updateSurface(dt) {
   if (keys['KeyA']) move.sub(right);
   const speed = 280;
   if (move.lengthSq() > 0) { move.normalize().multiplyScalar(speed * dt); camera.position.x += move.x; camera.position.z += move.z; }
-  if (keys['Space'] && exp.player.onGround) { exp.player.vy = 23; exp.player.onGround = false; }
+  if (keys['Space'] && exp.player.onGround) { exp.player.vy = 23; exp.player.onGround = false; Sound.jump(); }
   exp.player.vy -= g * dt;
   camera.position.y += exp.player.vy * dt;
   if (camera.position.y <= 18) { camera.position.y = 18; exp.player.vy = 0; exp.player.onGround = true; }
+  // 走路脚步声（着地且移动时，节流触发）
+  if (exp.player.onGround && move.lengthSq() > 0) {
+    exp._stepT = (exp._stepT || 0) + dt;
+    if (exp._stepT > 0.34) { exp._stepT = 0; Sound.footstep(); }
+  }
   const R = 5800; const d = Math.hypot(camera.position.x, camera.position.z);
   if (d > R) { camera.position.x *= R / d; camera.position.z *= R / d; }
   if (exp.dust) exp.dust.rotation.y += dt * 0.01;
@@ -2093,7 +2117,7 @@ function updateSurface(dt) {
   if (exp.earthSky) exp.earthSky.rotation.y += dt * 0.05;
   for (const p of exp.pois) {
     const dd = Math.hypot(camera.position.x - p.x, camera.position.z - p.z);
-    if (dd < 720 && !p.done) { p.done = true; unlockAch(p.id, p.name); expMilestone(p.name, p.desc); }
+    if (dd < 720 && !p.done) { p.done = true; unlockAch(p.id, p.name); expMilestone(p.name, p.desc); Sound.poi(); }
     if (p.beam) { p.beam.material.opacity = p.done ? 0.14 : 0.55; p.beam.scale.y = 1 + 0.1 * Math.sin(exp.t * 3 + p.x); }
   }
   const left = exp.pois.filter(p => !p.done).length;
@@ -2137,6 +2161,18 @@ function beginRoamLanding(L) {
   showRoamSurfaceUI(true);
   expHelp.textContent = cfg.cloudDeck ? 'WASD 漂浮 · 空格 上升 · 飞向发光风暴眼解锁地标 · P 拍照 · R 返航' : ROAM_HELP;
   hazardEl.style.opacity = '0'; hazardWarn.style.display = 'none';
+  // 环境与着陆音效
+  const envName = cfg.earth ? 'earth' : cfg.cloudDeck ? 'gas' : (cfg.id === 'mars' ? 'mars' : 'airless');
+  Sound.setEnvironment(envName);
+  Sound.setWarp(0);
+  if (cfg.cloudDeck) {
+    Sound.entryHiss();
+  } else if (envName !== 'airless') {
+    Sound.entryHiss();
+    setTimeout(() => Sound.land(false), 700);
+  } else {
+    setTimeout(() => Sound.land(true), 700);
+  }
   document.body.classList.add('shake-land');
   setTimeout(() => document.body.classList.remove('shake-land'), 720);
   expMilestone(`着陆 · ${cfg.landTitle || cfg.name}`, cfg.landDesc || `你降落在了${cfg.name}表面。`);
@@ -2149,6 +2185,8 @@ function exitRoamSurface() {
   setRoamVisibility(true);
   scene.background = new THREE.Color(0x000006);
   scene.fog = new THREE.FogExp2(0x000006, 0.0000008);
+  Sound.setEnvironment('space');
+  Sound.setWarp(0);
   sunLight.intensity = 4.5;
   camera.position.copy(roamExitPos);
   camera.lookAt(roamExitPos.x, roamExitPos.y, roamExitPos.z - 100);
@@ -2171,6 +2209,10 @@ function unlockAch(id, label) {
   expToasts.appendChild(d);
   setTimeout(() => d.classList.add('out'), 3200);
   setTimeout(() => d.remove(), 3900);
+  Sound.achievement();
+  // 首次登陆某星 / 全部地标解锁：奏响恢弘主题
+  if (id === 'land') Sound.cueEpic();
+  if (id !== 'land' && exp.pois.length && exp.pois.every(p => p.done)) Sound.cueEpic();
 }
 function phaseLabel(p) {
   return { pad: '发射台', countdown: '倒计时', ascent: '升空', orbit: '近地轨道 · 失重', transit: '地火巡航', edl: '进入火星大气', surface: '火星地表探索' }[p] || '';
@@ -2181,6 +2223,8 @@ function updateExpeditionHUD() {
     expAltNum.textContent = Math.round(exp.alt);
     expAltFill.style.height = Math.min(100, exp.alt / 400 * 100) + '%';
   } else { expAltNum.textContent = '—'; expAltFill.style.height = '0%'; }
+  // 远征太空飞行段（升空/入轨/巡航）保留引擎嗡鸣；地表/再入段静默
+  Sound.setWarp(['ascent', 'orbit', 'transit'].includes(exp.phase) ? 0.55 : 0);
 }
 function updateExpedition(dt) {
   exp.t += dt;
@@ -2220,9 +2264,12 @@ function endExpedition() {
   fovTarget = 72; camera.fov = 72; camera.updateProjectionMatrix();
   gameState = 'intro';
   document.getElementById('blocker').style.display = 'flex';
+  Sound.setEnvironment('space');
+  Sound.setWarp(0);
 }
 
 document.getElementById('btn-expedition').addEventListener('click', () => {
+  Sound.resume(); Sound.armMusic();
   const dest = document.getElementById('exp-dest');
   if (dest) dest.style.display = 'flex';
 });
@@ -2237,7 +2284,13 @@ document.getElementById('btn-ph-close').addEventListener('click', () => {
 document.getElementById('btn-eb-close').addEventListener('click', toggleExpBrief);
 // 远征中若误按 ESC 解锁指针，点击画面即可重新锁定
 renderer.domElement.addEventListener('click', () => {
+  Sound.resume();
   if (!controls.isLocked && expBrief.style.display !== 'flex' && photoPanel.style.display !== 'flex' && (mode === 'expedition' || roamSurfaceActive)) controls.lock();
+});
+document.getElementById('sound-btn').addEventListener('click', () => {
+  Sound.resume(); Sound.armMusic();
+  const on = Sound.toggle();
+  document.getElementById('sound-btn').textContent = on ? '🔊' : '🔇';
 });
 
 /* ---------- 语音播报 ---------- */
@@ -2274,6 +2327,7 @@ function photoMeta() {
   return { planet: '太阳系漫游', phase: '自由漫游', alt: `(${Math.round(camera.position.x)}, ${Math.round(camera.position.y)}, ${Math.round(camera.position.z)})`, t: new Date().toLocaleString('zh-CN', { hour12: false }) };
 }
 function takePhoto() {
+  Sound.photo();
   composer.render();
   const src = renderer.domElement;
   const W = 540, H = Math.round(src.height / src.width * W);
