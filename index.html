@@ -91,8 +91,41 @@
     <div id="launch-sub"></div>
   </div>
 
+  <!-- 开场宣传片 / 宇宙总览（游戏开始前） -->
+  <div id="cinematic">
+    <canvas id="cine-stars"></canvas>
+    <div class="cine-vignette"></div>
+
+    <!-- 起始之门（首个用户手势 → 解锁音频） -->
+    <div class="cine-gate" id="cine-gate">
+      <div class="cine-logo">COSMIC&nbsp;VOYAGE</div>
+      <div class="cine-logo-sub">沉浸式宇宙旅行 · 一场属于所有人的星辰大海</div>
+      <button id="cine-start" class="cine-start-btn">▶ 开启旅程</button>
+      <div class="cine-gate-tip">建议佩戴耳机 · 用鼠标与键盘自由探索 90 亿光年的宇宙</div>
+    </div>
+
+    <!-- 章节放映框 -->
+    <div class="cine-frame" id="cine-frame" style="display:none">
+      <button class="cine-skip" id="cine-skip">跳过介绍 ››</button>
+      <div class="cine-stage" id="cine-stage"></div>
+      <div class="cine-text">
+        <div class="cine-chapter" id="cine-chapter"></div>
+        <h1 class="cine-title" id="cine-title"></h1>
+        <div class="cine-body" id="cine-body"></div>
+      </div>
+      <div class="cine-foot">
+        <div class="cine-dots" id="cine-dots"></div>
+        <div class="cine-nav">
+          <button class="cine-prev" id="cine-prev">‹ 上一章</button>
+          <button class="cine-next" id="cine-next">下一章 ›</button>
+        </div>
+      </div>
+      <div class="cine-progress"><i id="cine-progress-bar"></i></div>
+    </div>
+  </div>
+
   <!-- 开场 / 准备发射 -->
-  <div id="blocker">
+  <div id="blocker" style="display:none">
     <div id="intro">
       <div class="intro-title"></div>
       <div class="intro-body"></div>
