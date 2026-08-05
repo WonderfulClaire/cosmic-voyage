@@ -840,20 +840,133 @@ function buildTimeline() {
 }
 function buildSolar() {
   const cx = 230, cy = 150;
-  const planets = [
-    [40, '#9a8c7a', 9], [66, '#d9b56b', 11], [92, '#3a7bd5', 12], [118, '#c1440e', 10],
-    [150, '#d8a06a', 22], [182, '#e3c98e', 19], [210, '#8fd3e0', 15], [236, '#3b5bdb', 14],
+  const P = [
+    { o: 40,  r: 7,  k: 'mercury', d: 9  },
+    { o: 66,  r: 11, k: 'venus',   d: 13 },
+    { o: 92,  r: 12, k: 'earth',   d: 17 },
+    { o: 118, r: 9,  k: 'mars',    d: 21 },
+    { o: 150, r: 22, k: 'jupiter', d: 28 },
+    { o: 182, r: 17, k: 'saturn',  d: 34, ring: 30 },
+    { o: 210, r: 14, k: 'uranus',  d: 40 },
+    { o: 236, r: 13, k: 'neptune', d: 46 },
   ];
-  let s = `<defs><radialGradient id="sun" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#fff6cf"/><stop offset="45%" stop-color="#ffcf5e"/><stop offset="100%" stop-color="#ff8a2a" stop-opacity="0.2"/></radialGradient></defs>`;
-  planets.forEach((p, i) => {
-    s += `<circle cx="${cx}" cy="${cy}" r="${p[0]}" fill="none" stroke="rgba(140,180,230,0.16)" stroke-width="1"/>`;
-    const dur = 9 + i * 4;
-    let dot = `<circle cx="${cx + p[0]}" cy="${cy}" r="${p[2]}" fill="${p[1]}"/>`;
-    if (i === 5) dot += `<ellipse cx="${cx + p[0]}" cy="${cy}" rx="${p[2] * 2}" ry="${p[2] * 0.6}" fill="none" stroke="#e3c98e" stroke-width="2" opacity="0.8"/>`;
-    s += `<g class="orbit-g" style="transform-origin:${cx}px ${cy}px; --dur:${dur}s">${dot}</g>`;
+  const gmap = { mercury:'mer_g', venus:'ven_g', earth:'ear_g', mars:'mar_g', jupiter:'jup_g', saturn:'sat_g', uranus:'ura_g', neptune:'nep_g' };
+  const defs = `<defs>
+    <radialGradient id="s_c"  cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#fff7d4" stop-opacity="0.85"/><stop offset="55%" stop-color="#ffaa3a" stop-opacity="0.25"/><stop offset="100%" stop-color="#ff7a2a" stop-opacity="0"/></radialGradient>
+    <radialGradient id="s_g"  cx="40%" cy="38%" r="62%"><stop offset="0%" stop-color="#fff8d8"/><stop offset="45%" stop-color="#ffd56a"/><stop offset="100%" stop-color="#ff8a2a"/></radialGradient>
+    <radialGradient id="mer_g" cx="34%" cy="32%" r="72%"><stop offset="0%" stop-color="#d4c8b2"/><stop offset="55%" stop-color="#8a7c68"/><stop offset="100%" stop-color="#3a3225"/></radialGradient>
+    <radialGradient id="ven_g" cx="34%" cy="32%" r="72%"><stop offset="0%" stop-color="#f6dca0"/><stop offset="55%" stop-color="#cc9a55"/><stop offset="100%" stop-color="#6e4818"/></radialGradient>
+    <radialGradient id="ear_g" cx="34%" cy="32%" r="72%"><stop offset="0%" stop-color="#9ed1ff"/><stop offset="55%" stop-color="#2a6cd2"/><stop offset="100%" stop-color="#0c2a60"/></radialGradient>
+    <radialGradient id="ear_atm" cx="50%" cy="50%" r="50%"><stop offset="78%" stop-color="rgba(120,200,255,0)"/><stop offset="92%" stop-color="rgba(140,215,255,0.78)"/><stop offset="100%" stop-color="rgba(140,215,255,0)"/></radialGradient>
+    <radialGradient id="mar_g" cx="34%" cy="32%" r="72%"><stop offset="0%" stop-color="#ea8c58"/><stop offset="55%" stop-color="#b54a22"/><stop offset="100%" stop-color="#5a2410"/></radialGradient>
+    <radialGradient id="jup_g" cx="34%" cy="32%" r="76%"><stop offset="0%" stop-color="#f6e0b4"/><stop offset="55%" stop-color="#cc9868"/><stop offset="100%" stop-color="#6e4520"/></radialGradient>
+    <radialGradient id="sat_g" cx="34%" cy="32%" r="76%"><stop offset="0%" stop-color="#fae6b8"/><stop offset="55%" stop-color="#d0a868"/><stop offset="100%" stop-color="#6e4a18"/></radialGradient>
+    <radialGradient id="ura_g" cx="34%" cy="32%" r="72%"><stop offset="0%" stop-color="#d6efe8"/><stop offset="55%" stop-color="#7cc4ba"/><stop offset="100%" stop-color="#286060"/></radialGradient>
+    <radialGradient id="nep_g" cx="34%" cy="32%" r="72%"><stop offset="0%" stop-color="#7aa6f0"/><stop offset="55%" stop-color="#2850b0"/><stop offset="100%" stop-color="#0a1f50"/></radialGradient>
+    <clipPath id="jup_c"><circle cx="0" cy="0" r="22"/></clipPath>
+    <clipPath id="sat_c"><circle cx="0" cy="0" r="17"/></clipPath>
+  </defs>`;
+
+  let body = '';
+  P.forEach(p => {
+    body += `<circle cx="${cx}" cy="${cy}" r="${p.o}" fill="none" stroke="rgba(140,180,230,0.14)" stroke-width="1"/>`;
   });
-  s += `<circle cx="${cx}" cy="${cy}" r="30" fill="url(#sun)"/><circle cx="${cx}" cy="${cy}" r="15" fill="#fff2b0"/>`;
-  return `<svg viewBox="0 0 460 300">${s}</svg>`;
+
+  P.forEach(p => {
+    let pl = '';
+    // 大气辉光（地球）
+    if (p.k === 'earth') pl += `<circle r="${(p.r * 1.55).toFixed(1)}" fill="url(#ear_atm)"/>`;
+
+    // 土星：环的后半（在行星后）
+    if (p.k === 'saturn') {
+      const rx = p.ring, ry = Math.round(p.ring * 0.28);
+      pl += `<g transform="rotate(-18)">
+        <ellipse cx="0" cy="0" rx="${rx}" ry="${ry}" fill="none" stroke="rgba(220,200,150,0.28)" stroke-width="3.5"/>
+        <ellipse cx="0" cy="0" rx="${rx - 7}" ry="${Math.max(1, ry - 2)}" fill="none" stroke="rgba(210,185,130,0.35)" stroke-width="1.6"/>
+      </g>`;
+    }
+
+    // 行星本体（3D 球感径向渐变）
+    pl += `<circle r="${p.r}" fill="url(#${gmap[p.k]})"/>`;
+
+    // 表面纹理
+    if (p.k === 'mercury') {
+      pl += `<circle cx="-2.2" cy="-3" r="2" fill="#3a3225" opacity="0.55"/>`;
+      pl += `<circle cx="3"   cy="2"  r="1.5" fill="#3a3225" opacity="0.5"/>`;
+      pl += `<circle cx="-1"  cy="3.5" r="1.2" fill="#3a3225" opacity="0.45"/>`;
+      pl += `<circle cx="2.5" cy="-4" r="0.9" fill="#3a3225" opacity="0.4"/>`;
+      pl += `<circle cx="-3.5" cy="1"  r="0.7" fill="#3a3225" opacity="0.35"/>`;
+    } else if (p.k === 'venus') {
+      pl += `<ellipse cx="0" cy="-4" rx="${(p.r * 0.95).toFixed(1)}" ry="${(p.r * 0.16).toFixed(1)}" fill="#ecc878" opacity="0.5"/>`;
+      pl += `<ellipse cx="0" cy="-1" rx="${(p.r * 0.95).toFixed(1)}" ry="${(p.r * 0.14).toFixed(1)}" fill="#d4a868" opacity="0.4"/>`;
+      pl += `<ellipse cx="0" cy="3"  rx="${(p.r * 0.95).toFixed(1)}" ry="${(p.r * 0.18).toFixed(1)}" fill="#a87c30" opacity="0.5"/>`;
+    } else if (p.k === 'earth') {
+      pl += `<g fill="#3a9654" opacity="0.92">
+        <path d="M -5 -2 q3 -3 6 0 q1 3 -3 4 q-4 0 -3 -4 Z"/>
+        <path d="M 1  3  q4 -1 6 2 q0 3 -4 3 q-4 0 -2 -5 Z"/>
+        <path d="M -3 5  q2 -1 3 1 q0 2 -2 2 q-2 0 -1 -3 Z"/>
+        <path d="M 4 -4  q2 -1 3 1 q0 2 -2 2 q-2 0 -1 -3 Z"/>
+      </g>`;
+      // 极冠
+      pl += `<ellipse cx="0" cy="-${(p.r * 0.82).toFixed(1)}" rx="${(p.r * 0.42).toFixed(1)}" ry="${(p.r * 0.18).toFixed(1)}" fill="#eaf6ff" opacity="0.9"/>`;
+      pl += `<ellipse cx="0" cy="${(p.r * 0.82).toFixed(1)}" rx="${(p.r * 0.36).toFixed(1)}" ry="${(p.r * 0.15).toFixed(1)}" fill="#eaf6ff" opacity="0.82"/>`;
+      // 一抹薄云
+      pl += `<ellipse cx="-2" cy="-4" rx="${(p.r * 0.42).toFixed(1)}" ry="${(p.r * 0.12).toFixed(1)}" fill="#ffffff" opacity="0.35"/>`;
+    } else if (p.k === 'mars') {
+      pl += `<ellipse cx="-2" cy="-1" rx="3" ry="2" fill="#6a2814" opacity="0.55"/>`;
+      pl += `<ellipse cx="3"  cy="2"  rx="2" ry="1.5" fill="#6a2814" opacity="0.5"/>`;
+      pl += `<ellipse cx="-3" cy="3"  rx="1.6" ry="1.1" fill="#6a2814" opacity="0.45"/>`;
+      // 极冠（白色）
+      pl += `<ellipse cx="0" cy="-${(p.r * 0.82).toFixed(1)}" rx="${(p.r * 0.55).toFixed(1)}" ry="${(p.r * 0.22).toFixed(1)}" fill="#ffffff" opacity="0.92"/>`;
+      pl += `<ellipse cx="0" cy="${(p.r * 0.82).toFixed(1)}" rx="${(p.r * 0.4).toFixed(1)}" ry="${(p.r * 0.18).toFixed(1)}" fill="#ffffff" opacity="0.85"/>`;
+    } else if (p.k === 'jupiter') {
+      pl += `<g clip-path="url(#jup_c)" opacity="0.55">
+        <rect x="-22" y="-16" width="44" height="2.4" fill="#a87238"/>
+        <rect x="-22" y="-9"  width="44" height="2"   fill="#d4a574"/>
+        <rect x="-22" y="-3"  width="44" height="3.2" fill="#9c6438"/>
+        <rect x="-22" y="6"   width="44" height="2"   fill="#c08858"/>
+        <rect x="-22" y="13"  width="44" height="2.4" fill="#8a5028"/>
+      </g>`;
+      // 大红斑
+      pl += `<ellipse cx="3" cy="2" rx="4.2" ry="2.5" fill="#b8451e" opacity="0.85"/>`;
+      pl += `<ellipse cx="3" cy="2" rx="3"   ry="1.6" fill="#d05a30" opacity="0.65"/>`;
+    } else if (p.k === 'saturn') {
+      pl += `<g clip-path="url(#sat_c)" opacity="0.5">
+        <rect x="-17" y="-10" width="34" height="2"   fill="#a87838"/>
+        <rect x="-17" y="-3"  width="34" height="2.4" fill="#c89c5c"/>
+        <rect x="-17" y="6"   width="34" height="2"   fill="#9c6e30"/>
+      </g>`;
+    } else if (p.k === 'uranus') {
+      pl += `<ellipse cx="0" cy="0" rx="${p.r}" ry="${(p.r * 0.14).toFixed(1)}" fill="#a8d8d0" opacity="0.55"/>`;
+      pl += `<ellipse cx="0" cy="${(p.r * 0.5).toFixed(1)}" rx="${(p.r * 0.8).toFixed(1)}" ry="${(p.r * 0.06).toFixed(1)}" fill="#88c0b8" opacity="0.45"/>`;
+    }
+
+    // 土星：环的前半（在行星前，覆盖）
+    if (p.k === 'saturn') {
+      const rx = p.ring, ry = Math.round(p.ring * 0.28);
+      pl += `<g transform="rotate(-18)">
+        <path d="M -${rx} 0 A ${rx} ${ry} 0 0 1 ${rx} 0" fill="none" stroke="rgba(245,225,185,0.85)" stroke-width="1.8"/>
+        <path d="M -${rx} 0 A ${rx} ${ry} 0 0 1 ${rx} 0" fill="none" stroke="rgba(255,240,205,0.55)" stroke-width="0.7" transform="translate(0 -1.4)"/>
+      </g>`;
+    }
+
+    body += `<g class="orbit-g" style="transform-origin:${cx}px ${cy}px; --dur:${p.d}s"><g transform="translate(${cx + p.o} ${cy})">${pl}</g></g>`;
+  });
+
+  // 太阳：外日冕 + 主体 + 亮核 + 内核 + 火花点
+  body += `<circle cx="${cx}" cy="${cy}" r="52" fill="url(#s_c)" class="sun-pulse"/>`;
+  body += `<circle cx="${cx}" cy="${cy}" r="34" fill="url(#s_g)"/>`;
+  body += `<circle cx="${cx}" cy="${cy}" r="22" fill="#fff5b0" opacity="0.9"/>`;
+  body += `<circle cx="${cx}" cy="${cy}" r="13" fill="#ffffff"/>`;
+  body += `<g opacity="0.8">`;
+  for (let i = 0; i < 8; i++) {
+    const a = i / 8 * Math.PI * 2 + 0.3;
+    body += `<circle cx="${(cx + Math.cos(a) * 44).toFixed(1)}" cy="${(cy + Math.sin(a) * 44).toFixed(1)}" r="1.6" fill="#ffe69a"/>`;
+    body += `<circle cx="${(cx + Math.cos(a) * 56).toFixed(1)}" cy="${(cy + Math.sin(a) * 56).toFixed(1)}" r="1" fill="#ffcf6a" opacity="0.7"/>`;
+  }
+  body += `</g>`;
+
+  return `<svg viewBox="0 0 460 300">${defs}${body}</svg>`;
 }
 function buildGalaxy() {
   const cx = 200, cy = 200; let arms = '', core = '';
@@ -1737,6 +1850,7 @@ const exp = {
   debris: [], surface: null, player: { vy: 0, onGround: true }, pois: [], dust: null,
   moons: [], earthSky: null, targetPlanet: null, voiceOn: true,
   surfaceMode: 'walk', cloudLayer: null, cloudSky: null,
+  completedMissions: new Set(), _completeShown: false,
 };
 
 /* ---------- 远征 DOM ---------- */
@@ -2125,6 +2239,7 @@ function updateCloudDeck(dt) {
   }
   const left = exp.pois.filter(p => !p.done).length;
   expObj.textContent = left > 0 ? `在云海中漂浮 · 飞向发光风暴眼解锁地标（剩余 ${left} 处）· 按 P 拍照 · 按 R 返航` : `✦ 你已穿越${exp.surfacePlanet.name}云海！按 R 返航`;
+  if (left === 0 && !exp._completeShown) { exp._completeShown = true; setTimeout(showJourneyEnd, 1400); }
 }
 
 // ---------- 金星：地狱平原（厚硫酸云 + 玄武岩 + 熔岩裂纹 + 苏联着陆器） ----------
@@ -2515,7 +2630,7 @@ function updateEDL(dt) {
   if (k >= 1) enterSurface();
 }
 function enterSurface() {
-  exp.phase = 'surface'; exp.t = 0;
+  exp.phase = 'surface'; exp.t = 0; exp._completeShown = false;
   const pl = exp.targetPlanet; exp.surfacePlanet = pl;
   unlockAch('land', `成功登陆${pl.name}`);
   const landDesc = pl.id === 'mars'
@@ -2586,6 +2701,7 @@ function updateSurface(dt) {
   }
   const left = exp.pois.filter(p => !p.done).length;
   expObj.textContent = left > 0 ? `走向发光光柱，解锁${exp.surfacePlanet.name}地标（剩余 ${left} 处）· 按 P 拍明信片` : `✦ 全部地标已解锁！你已完成${exp.surfacePlanet.name}巡视 🚀`;
+  if (left === 0 && !exp._completeShown) { exp._completeShown = true; setTimeout(showJourneyEnd, 1400); }
 }
 
 /* ---------- 漫游模式：直接登陆行星表面探索 ---------- */
@@ -2605,7 +2721,7 @@ function beginRoamLanding(L) {
   if (!cfg) return;
   exp.surfacePlanet = cfg;
   exp.surfaceMode = cfg.cloudDeck ? 'cloud' : 'walk';
-  exp.phase = 'surface'; exp.t = 0; exp.pois = [];
+  exp.phase = 'surface'; exp.t = 0; exp.pois = []; exp._completeShown = false; exp.mission = null;
   exp.player = { vy: 0, onGround: true };
   roamExitPos.copy(camera.position);
   landTarget = null;
@@ -2732,7 +2848,63 @@ function endExpedition() {
   document.getElementById('blocker').style.display = 'flex';
   Sound.setEnvironment('space');
   Sound.setWarp(0);
+  const jeEl = document.getElementById('journey-end'); if (jeEl) jeEl.style.display = 'none';
 }
+
+/* ---------- 旅程完成 / 结算（远征与地表探索的收尾闭环） ---------- */
+function journeyStatsHTML() {
+  const total = exp.pois.length || 1;
+  const done = exp.pois.filter(p => p.done).length;
+  let photos = 0;
+  try { photos = (JSON.parse(localStorage.getItem('cv_photos') || '[]')).length; } catch (e) {}
+  return `
+    <div class="mr-stat"><span>${done}<small>/${total}</small></span><label>地标解锁</label></div>
+    <div class="mr-stat"><span>${exp.achievements.size}</span><label>本程成就</label></div>
+    <div class="mr-stat"><span>${photos}</span><label>寄回明信片</label></div>`;
+}
+function hideJourneyEnd() {
+  const je = document.getElementById('journey-end'); if (je) je.style.display = 'none';
+}
+function showJourneyEnd() {
+  const je = document.getElementById('journey-end');
+  if (!je || je.style.display === 'flex') return;
+  if (exp.mission) exp.completedMissions.add(exp.mission.id);
+  const allDone = exp.completedMissions.size >= 3;
+  const planetName = exp.surfacePlanet ? exp.surfacePlanet.name : (exp.mission ? EXPEDITIONS[exp.mission.id].name : '');
+  document.getElementById('je-badge').textContent = exp.mission ? `🚀 ${exp.mission.name} · 任务完成` : `🛰 ${planetName} 地表探索完成`;
+  document.getElementById('je-title').textContent = allDone ? '🏆 传奇远征 · 全部通关' : '旅程完成';
+  document.getElementById('je-sub').innerHTML = exp.mission
+    ? (exp.mission.conclusion || '你完成了这次远征。')
+    : `你走遍了${planetName}的每一处发光地标，把星辰大海寄回了地球。`;
+  document.getElementById('je-stats').innerHTML = journeyStatsHTML();
+  const extra = document.getElementById('je-extra');
+  const credits = document.getElementById('je-credits');
+  if (allDone) {
+    credits.style.display = '';
+    credits.innerHTML = `
+      <div class="je-credit-line">火星方舟 · 殖民启航</div>
+      <div class="je-credit-line">深海回响 · 生命追问</div>
+      <div class="je-credit-line">曙光计划 · 月球跳板</div>
+      <div class="je-credit-line">三条任务线 · 全部达成</div>
+      <div class="je-credit-line je-credit-thanks">感谢你，深空宇航员。</div>
+      <div class="je-credit-line">COSMIC VOYAGE · 奇妙太空旅程</div>
+      <div class="je-credit-line">🌌 wonderfulclaire.github.io/cosmic-voyage</div>`;
+    extra.innerHTML = `<div class="je-grand">你已成为人类深空远征的传奇宇航员——三条任务线悉数达成。</div>`;
+    Sound.cueEpic();
+  } else {
+    credits.style.display = 'none';
+    const remain = 3 - exp.completedMissions.size;
+    extra.innerHTML = remain > 0 ? `<div class="je-next">还有 ${remain} 条任务线等待出发 · 回到起点即可选择新的故事</div>` : '';
+    Sound.achievement();
+  }
+  je.style.display = 'flex';
+  if (controls.isLocked) { try { controls.unlock(); } catch (e) {} }
+}
+document.getElementById('je-explore').addEventListener('click', () => {
+  hideJourneyEnd();
+  if (!controls.isLocked) { try { controls.lock(); } catch (e) {} }
+});
+document.getElementById('je-return').addEventListener('click', () => { hideJourneyEnd(); endExpedition(); });
 
 document.getElementById('btn-expedition').addEventListener('click', () => {
   Sound.resume(); Sound.armMusic();
