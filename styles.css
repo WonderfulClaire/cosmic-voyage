@@ -485,7 +485,7 @@ body.shake-land #scene { animation: shake 0.5s linear 3; }
 }
 #hazard-warn {
   position: fixed; left: 50%; top: 12%; transform: translateX(-50%);
-  z-index: 9; display: none; font-size: 17px; font-weight: 800; letter-spacing: 2px;
+  z-index: 11; display: none; font-size: 17px; font-weight: 800; letter-spacing: 2px;
   padding: 8px 22px; border-radius: 999px;
   background: rgba(8, 4, 12, 0.5); border: 1px solid rgba(255, 120, 80, 0.5);
   backdrop-filter: blur(3px);
