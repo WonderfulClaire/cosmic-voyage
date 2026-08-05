@@ -1014,21 +1014,133 @@ function buildConstellations() {
   return `<div style="display:flex;flex-wrap:wrap;justify-content:center;align-items:center;width:100%">${cards}</div>`;
 }
 function buildEarth() {
-  return `<svg viewBox="0 0 300 300"><defs>
-    <radialGradient id="oc" cx="38%" cy="34%" r="75%"><stop offset="0%" stop-color="#7fc0ff"/><stop offset="55%" stop-color="#2f6fd0"/><stop offset="100%" stop-color="#0d2c66"/></radialGradient>
-    <radialGradient id="atm" cx="50%" cy="50%" r="50%"><stop offset="76%" stop-color="rgba(120,200,255,0)"/><stop offset="92%" stop-color="rgba(130,210,255,0.5)"/><stop offset="100%" stop-color="rgba(130,210,255,0)"/></radialGradient>
+  return `<svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="oc" cx="38%" cy="34%" r="78%">
+      <stop offset="0%" stop-color="#7fc7ff"/>
+      <stop offset="38%" stop-color="#2f7ad8"/>
+      <stop offset="78%" stop-color="#0d3a86"/>
+      <stop offset="100%" stop-color="#06224f"/>
+    </radialGradient>
+    <radialGradient id="atm" cx="50%" cy="50%" r="50%">
+      <stop offset="76%" stop-color="rgba(120,210,255,0)"/>
+      <stop offset="90%" stop-color="rgba(140,220,255,0.55)"/>
+      <stop offset="100%" stop-color="rgba(140,220,255,0)"/>
+    </radialGradient>
+    <radialGradient id="dusk" cx="62%" cy="40%" r="72%">
+      <stop offset="42%" stop-color="rgba(255,200,140,0)"/>
+      <stop offset="72%" stop-color="rgba(255,200,140,0.04)"/>
+      <stop offset="100%" stop-color="rgba(0,8,30,0.55)"/>
+    </radialGradient>
+    <radialGradient id="moon" cx="36%" cy="32%" r="78%">
+      <stop offset="0%" stop-color="#f0f2f6"/>
+      <stop offset="55%" stop-color="#b6bac2"/>
+      <stop offset="100%" stop-color="#4a4d54"/>
+    </radialGradient>
+    <radialGradient id="moonHalo" cx="50%" cy="50%" r="50%">
+      <stop offset="60%" stop-color="rgba(200,210,230,0)"/>
+      <stop offset="92%" stop-color="rgba(200,210,230,0.25)"/>
+      <stop offset="100%" stop-color="rgba(200,210,230,0)"/>
+    </radialGradient>
+    <clipPath id="earthClip"><circle cx="150" cy="150" r="104"/></clipPath>
   </defs>
-  <circle cx="150" cy="150" r="128" fill="url(#atm)"/>
+
+  <!-- 大气外辉光（双层） -->
+  <circle cx="150" cy="150" r="132" fill="url(#atm)"/>
+  <circle cx="150" cy="150" r="120" fill="url(#atm)" opacity="0.5"/>
+  <!-- 海洋主体 -->
   <circle cx="150" cy="150" r="104" fill="url(#oc)"/>
-  <g fill="#3f9b54" opacity="0.92">
-    <path d="M92 108 q24 -18 46 -6 q14 12 -2 26 q-28 16 -48 2 q-10 -14 4 -22 Z"/>
-    <path d="M150 162 q30 -10 50 6 q10 18 -14 30 q-34 10 -50 -10 q-6 -18 14 -26 Z"/>
-    <path d="M108 200 q20 -6 30 8 q4 14 -14 18 q-20 2 -24 -12 q-2 -10 8 -14 Z"/>
-    <path d="M196 120 q14 -8 22 4 q2 12 -14 14 q-14 0 -14 -10 Z"/>
+
+  <!-- 大陆（精细轮廓，clip 在球内） -->
+  <g clip-path="url(#earthClip)" fill="#3d8a4e">
+    <!-- 北美 -->
+    <path d="M76 96 q12 -14 30 -12 q18 2 28 12 q6 10 -2 20 q-4 6 0 12 q-4 6 -12 8 q-10 2 -16 -4 q-8 -2 -10 4 q-6 0 -10 -6 q-8 -10 -10 -22 q-2 -8 2 -12 Z"/>
+    <!-- 中美洲 + 加勒比岛链 -->
+    <path d="M114 148 q6 -2 8 4 q2 8 -2 14 q-4 4 -8 0 q-4 -6 0 -12 q0 -4 2 -6 Z"/>
+    <path d="M122 156 q4 0 4 4 q0 4 -4 4 q-4 0 -4 -4 q0 -4 4 -4 Z"/>
+    <!-- 南美 -->
+    <path d="M126 168 q12 -8 22 -2 q10 8 8 24 q-2 18 -8 32 q-6 12 -16 14 q-10 0 -14 -10 q-6 -14 -2 -32 q4 -16 10 -26 Z"/>
+    <!-- 欧亚大陆（连成大块） -->
+    <path d="M146 90 q24 -10 50 -4 q22 4 38 -2 q18 -2 26 8 q8 12 -4 22 q-12 10 -32 8 q-22 0 -40 8 q-22 6 -38 -4 q-16 -10 -8 -28 q4 -8 8 -8 Z"/>
+    <!-- 印度次大陆（独立凸起） -->
+    <path d="M202 134 q8 0 10 8 q2 8 -4 14 q-6 4 -10 -2 q-4 -8 0 -14 q2 -4 4 -6 Z"/>
+    <!-- 阿拉伯半岛 -->
+    <path d="M186 134 q8 -2 10 6 q2 8 -2 12 q-6 4 -10 -2 q-4 -8 0 -12 q0 -3 2 -4 Z"/>
+    <!-- 非洲 -->
+    <path d="M172 128 q14 -2 20 8 q10 14 6 32 q-2 20 -10 30 q-8 10 -18 2 q-10 -10 -10 -28 q-2 -22 4 -32 q4 -8 8 -12 Z"/>
+    <!-- 东南亚岛屿链 -->
+    <path d="M242 158 q6 0 8 4 q2 6 -4 8 q-6 0 -6 -6 q0 -4 2 -6 Z"/>
+    <path d="M254 162 q4 0 4 4 q0 4 -4 4 q-4 0 -4 -4 q0 -4 4 -4 Z"/>
+    <path d="M262 168 q4 0 4 4 q0 4 -4 4 q-4 0 -4 -4 q0 -4 4 -4 Z"/>
+    <!-- 澳洲 -->
+    <path d="M232 178 q12 -2 18 6 q6 10 -2 18 q-10 8 -22 4 q-10 -4 -10 -14 q0 -10 16 -14 Z"/>
+    <!-- 格陵兰（北极圈内的孤岛） -->
+    <path d="M76 70 q10 -6 18 0 q8 6 4 14 q-6 8 -18 4 q-10 -4 -4 -18 Z"/>
+    <!-- 马达加斯加 -->
+    <path d="M194 198 q4 0 4 6 q0 8 -2 12 q-2 2 -4 0 q-2 -8 0 -14 q1 -3 2 -4 Z"/>
   </g>
-  <circle cx="150" cy="150" r="104" fill="none" stroke="rgba(255,255,255,0.16)" stroke-width="1"/>
-  <ellipse cx="234" cy="116" rx="13" ry="13" fill="#cfd4da"/>
-  <circle cx="150" cy="150" r="104" fill="rgba(255,255,255,0.04)"/></svg>`;
+
+  <!-- 大陆纹理：沙漠/森林/山脉色斑 -->
+  <g clip-path="url(#earthClip)" opacity="0.6">
+    <ellipse cx="180" cy="108" rx="14" ry="5" fill="#c9a45c"/>
+    <ellipse cx="198" cy="120" rx="10" ry="4" fill="#a37a3a"/>
+    <ellipse cx="186" cy="160" rx="6" ry="14" fill="#b08a4a"/>
+    <ellipse cx="194" cy="180" rx="5" ry="6" fill="#7a5a2a"/>
+    <ellipse cx="98" cy="120" rx="8" ry="4" fill="#7ec082"/>
+    <ellipse cx="116" cy="124" rx="6" ry="3" fill="#3a7a44"/>
+    <ellipse cx="120" cy="200" rx="5" ry="9" fill="#3a7a44"/>
+    <ellipse cx="134" cy="196" rx="3" ry="6" fill="#7ec082"/>
+    <ellipse cx="240" cy="184" rx="6" ry="3" fill="#c9a45c"/>
+  </g>
+
+  <!-- 极冠：北极（多层雪冠） -->
+  <g clip-path="url(#earthClip)">
+    <ellipse cx="150" cy="44" rx="84" ry="22" fill="#e6efff" opacity="0.9"/>
+    <ellipse cx="150" cy="40" rx="56" ry="12" fill="#ffffff" opacity="0.95"/>
+    <ellipse cx="150" cy="38" rx="30" ry="6" fill="#ffffff"/>
+  </g>
+  <!-- 极冠：南极 -->
+  <g clip-path="url(#earthClip)">
+    <ellipse cx="150" cy="262" rx="92" ry="24" fill="#e6efff" opacity="0.9"/>
+    <ellipse cx="150" cy="264" rx="58" ry="13" fill="#ffffff" opacity="0.95"/>
+    <ellipse cx="150" cy="266" rx="28" ry="6" fill="#ffffff"/>
+  </g>
+
+  <!-- 云带（云带缓慢横向漂动） -->
+  <g clip-path="url(#earthClip)" class="earth-clouds">
+    <path d="M40 130 q40 -10 80 -4 q40 8 90 -2 q30 4 30 14 q-30 16 -86 14 q-60 -2 -100 6 q-30 -10 -14 -28 Z" fill="#ffffff" opacity="0.55"/>
+    <path d="M60 168 q40 -6 80 -2 q44 4 80 -2 q14 6 8 14 q-36 12 -86 8 q-56 -4 -90 4 q-14 -8 8 -22 Z" fill="#ffffff" opacity="0.4"/>
+    <path d="M50 200 q40 -4 76 0 q36 4 60 0 q8 4 4 10 q-26 8 -64 6 q-44 -2 -76 4 q-12 -6 0 -20 Z" fill="#ffffff" opacity="0.3"/>
+    <path d="M70 92 q30 4 60 0 q30 -4 50 4 q4 8 -4 12 q-26 6 -56 4 q-32 -2 -56 4 q-8 -8 6 -24 Z" fill="#ffffff" opacity="0.35"/>
+  </g>
+
+  <!-- 晨昏线（让球有立体感：右上亮、左下暗） -->
+  <circle cx="150" cy="150" r="104" fill="url(#dusk)"/>
+  <!-- 球边缘高光 -->
+  <circle cx="150" cy="150" r="104" fill="none" stroke="rgba(170,220,255,0.5)" stroke-width="1.2"/>
+  <!-- 球边缘细描边 -->
+  <circle cx="150" cy="150" r="103.5" fill="none" stroke="rgba(8,20,50,0.5)" stroke-width="0.8"/>
+
+  <!-- 月球（带环形山） -->
+  <g>
+    <!-- 月球外极淡光晕 -->
+    <circle cx="234" cy="116" r="22" fill="url(#moonHalo)"/>
+    <!-- 月球阴影侧（暗面） -->
+    <circle cx="236" cy="118" r="15" fill="#3a3d44"/>
+    <!-- 月球亮面（径向渐变） -->
+    <circle cx="232" cy="114" r="14" fill="url(#moon)"/>
+    <!-- 环形山（5 个） -->
+    <circle cx="227" cy="109" r="2.2" fill="#6b6e74" opacity="0.75"/>
+    <circle cx="237" cy="112" r="1.4" fill="#6b6e74" opacity="0.6"/>
+    <circle cx="232" cy="119" r="2.6" fill="#7d8086" opacity="0.55"/>
+    <circle cx="241" cy="116" r="1.2" fill="#6b6e74" opacity="0.6"/>
+    <circle cx="225" cy="117" r="1.6" fill="#7d8086" opacity="0.5"/>
+    <!-- 月海（月球上暗色平原） -->
+    <ellipse cx="230" cy="113" rx="3" ry="2" fill="#8a8d93" opacity="0.35"/>
+    <ellipse cx="236" cy="116" rx="2" ry="1.2" fill="#8a8d93" opacity="0.3"/>
+  </g>
+
+</svg>`;
 }
 
 // ---------- 章节内容 ----------
