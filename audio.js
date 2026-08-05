@@ -278,6 +278,66 @@ export const Sound = (() => {
     setTimeout(() => fadeMusic(0, 2.0), 10400);
   }
 
+  // ---------- 开场宣传片：持续的、克制的希望感音垫 ----------
+  let cineHandle = null;
+  function startCinematic() {
+    if (!ensure()) return;
+    musicReady = true;
+    if (ctx.state === 'suspended') ctx.resume();
+    if (cineHandle) return;                       // 已经在进行
+    const t = ctx.currentTime;
+    const bus = ctx.createGain(); bus.gain.value = 0.0001; bus.connect(musicGain);
+    bus.gain.linearRampToValueAtTime(0.5, t + 3.5);
+    // 希望的循环：Cmaj9 → Amin7 → Fmaj7 → G  (温柔、辽阔、向前)
+    const chords = [
+      [130.81, 164.81, 196.0, 246.94, 329.63],
+      [110.0, 164.81, 220.0, 261.63, 329.63],
+      [87.31, 130.81, 174.61, 220.0, 261.63],
+      [98.0, 146.83, 196.0, 246.94, 293.66],
+    ];
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900; lp.Q.value = 0.4;
+    const breath = ctx.createOscillator(); breath.type = 'sine'; breath.frequency.value = 0.07;
+    const breathG = ctx.createGain(); breathG.gain.value = 300; breath.connect(breathG); breathG.connect(lp.frequency); breath.start();
+    lp.connect(bus);
+    const oscs = chords[0].map(f => {
+      const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = f;
+      const og = ctx.createGain(); og.gain.value = 0.16; o.connect(og); og.connect(lp); o.start();
+      return o;
+    });
+    // 高八度微光（极弱）
+    const sh = ctx.createOscillator(); sh.type = 'triangle'; sh.frequency.value = 659.25;
+    const shg = ctx.createGain(); shg.gain.value = 0.02; sh.connect(shg); shg.connect(lp); sh.start();
+    let idx = 0;
+    const move = () => {
+      if (!cineHandle) return;
+      idx = (idx + 1) % chords.length;
+      const tt = ctx.currentTime;
+      oscs.forEach((o, i) => o.frequency.setTargetAtTime(chords[idx][i], tt, 1.4));
+      cineHandle.timer = setTimeout(move, 7000);
+    };
+    cineHandle = { bus, oscs, lp, breath, sh, shg, timer: setTimeout(move, 7000) };
+    // 进入提示音：轻柔上行三音
+    [392.0, 523.25, 659.25].forEach((fr, i) => {
+      const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = fr;
+      const g = ctx.createGain(); const st = t + i * 0.18;
+      g.gain.setValueAtTime(0.0001, st); g.gain.exponentialRampToValueAtTime(0.07, st + 0.05); g.gain.exponentialRampToValueAtTime(0.001, st + 1.2);
+      o.connect(g); g.connect(musicGain); o.start(st); o.stop(st + 1.3);
+    });
+  }
+  function stopCinematic() {
+    if (!cineHandle) return;
+    const h = cineHandle; cineHandle = null;
+    clearTimeout(h.timer);
+    const t = ctx.currentTime;
+    h.bus.gain.cancelScheduledValues(t);
+    h.bus.gain.setValueAtTime(h.bus.gain.value, t);
+    h.bus.gain.linearRampToValueAtTime(0.0001, t + 1.4);
+    setTimeout(() => {
+      try { [h.breath, h.sh, ...h.oscs].forEach(o => { try { o.stop(); } catch (e) {} }); } catch (e) {}
+      try { h.bus.disconnect(); h.lp.disconnect(); } catch (e) {}
+    }, 1600);
+  }
+
   // ---------- 一次性音效 ----------
   function gearShift(g) {
     resume(); if (!ctx) return;
@@ -398,7 +458,7 @@ export const Sound = (() => {
   return {
     resume, ensure, setEnvironment, setWarp,
     gearShift, land, jump, footstep, photo, achievement, poi, entryHiss, ui,
-    cueArrival, cueEarth, cueEpic,
+    cueArrival, cueEarth, cueEpic, startCinematic, stopCinematic,
     setEnabled, toggle, isEnabled: () => enabled, armMusic,
   };
 })();
