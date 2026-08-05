@@ -716,6 +716,15 @@ addEventListener('keydown', e => {
 });
 addEventListener('keyup', e => { keys[e.code] = false; });
 
+// 首次任意交互即解锁音频上下文（覆盖浏览器自动播放限制），保证音乐/音效能响
+function _unlockAudioOnce() {
+  try { Sound.resume(); Sound.armMusic(); } catch (e) {}
+  window.removeEventListener('pointerdown', _unlockAudioOnce);
+  window.removeEventListener('keydown', _unlockAudioOnce);
+}
+window.addEventListener('pointerdown', _unlockAudioOnce);
+window.addEventListener('keydown', _unlockAudioOnce);
+
 /* ---------------- HUD ---------------- */
 const hudSpeed = document.getElementById('hud-speed');
 const hudPos = document.getElementById('hud-pos');
