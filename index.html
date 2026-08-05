@@ -28,6 +28,7 @@
 
     <div id="hud-bottom-left">
       <div id="hud-speed">速度 0 u/s</div>
+      <div id="hud-gear">档位 标准</div>
       <div id="hud-pos">坐标 0, 0, 0</div>
     </div>
 
@@ -43,9 +44,10 @@
       <div><b>A / D</b> 左右平移</div>
       <div><b>空格 / C</b> 上升 / 下降</div>
       <div><b>鼠标</b> 转动视角（点击画面锁定）</div>
-      <div><b>Shift</b> 引擎加速</div>
+      <div><b>[ / ]</b> 切换速度档位（滑行·巡航·标准·加速·跃迁）</div>
       <div><b>E</b> 靠近天体查看科普</div>
-      <div><b>G</b> 星图航图 · 跃迁到八大区域</div>
+      <div><b>F</b> 进入 / 离开空间站舱内</div>
+      <div><b>G</b> 星图航图 · 跃迁到十大区域</div>
       <div><b>B</b> 宇宙图鉴 · 查看探索进度</div>
       <div><b>星图雷达</b> 右下角小地图 + 边缘箭头指引方向</div>
       <div><b>R</b> 结束任务 · 返航结算</div>
@@ -59,7 +61,8 @@
       <canvas id="minimap" width="190" height="190"></canvas>
       <div class="mm-foot">半径 28k · 上北下南</div>
     </div>
-    <div id="edge-markers"></div>
+      <div id="edge-markers"></div>
+      <div id="enter-prompt"></div>
   </div>
 
   <!-- 科普卡片 -->
@@ -85,10 +88,11 @@
       <div class="intro-title"></div>
       <div class="intro-body"></div>
       <div class="intro-controls">
-        <div>🕹 <b>W / A / S / D</b> 驾驶 · <b>鼠标</b> 转向 · <b>Shift</b> 加速</div>
+        <div>🕹 <b>W / A / S / D</b> 驾驶 · <b>鼠标</b> 转向 · <b>[ / ]</b> 速度档位（滑行·巡航·标准·加速·跃迁）</div>
         <div>🛰 飞近发光天体按 <b>E</b> 解锁宇宙知识</div>
+        <div>🚀 飞近空间站（天和 / ISS）按 <b>F</b> 进入舱内，透过舷窗看太空</div>
         <div>🧭 右下角星图雷达 + 边缘箭头帮你导航</div>
-        <div>🗺 按 <b>G</b> 打开星图航图，一键跃迁到八大宇宙区域（含征程·人类探索、中华问天）</div>
+        <div>🗺 按 <b>G</b> 打开星图航图，一键跃迁到十大宇宙区域（含地外生命探索、平行宇宙·理论）</div>
         <div>📖 按 <b>B</b> 打开宇宙图鉴，查看你探索了多少天体</div>
         <div>⌨ <b>R</b> 随时结束任务 · 返航结算 · <b>ESC</b> 暂停</div>
       </div>
