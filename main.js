@@ -780,6 +780,210 @@ const intro = document.getElementById('intro');
 intro.querySelector('.intro-title').textContent = INTRO.title;
 intro.querySelector('.intro-body').innerHTML = INTRO.lines.map(l => `<div>${l}</div>`).join('');
 
+/* =====================================================================
+   开场宣传片 / 宇宙总览（游戏开始前播放）
+   流程：起始之门（首个手势 → 解锁音频）→ 自动放映章节 → 进入发射台
+   ===================================================================== */
+const cineGate = document.getElementById('cine-gate');
+const cineFrame = document.getElementById('cine-frame');
+const cineStage = document.getElementById('cine-stage');
+const cineChapter = document.getElementById('cine-chapter');
+const cineTitle = document.getElementById('cine-title');
+const cineBody = document.getElementById('cine-body');
+const cineDots = document.getElementById('cine-dots');
+const cinePrev = document.getElementById('cine-prev');
+const cineNext = document.getElementById('cine-next');
+const cineSkip = document.getElementById('cine-skip');
+const cineStart = document.getElementById('cine-start');
+const cineProgress = document.getElementById('cine-progress-bar');
+const cineText = cineFrame.querySelector('.cine-text');
+
+// 静态星空背景（绘制一次）
+(function drawCineStars() {
+  const cv = document.getElementById('cine-stars'); if (!cv) return;
+  function paint() {
+    cv.width = innerWidth; cv.height = innerHeight;
+    const x = cv.getContext('2d'); const W = cv.width, H = cv.height;
+    x.clearRect(0, 0, W, H);
+    const neb = [[W * 0.18, H * 0.3, 'rgba(60,90,180,0.10)'], [W * 0.82, H * 0.68, 'rgba(150,60,140,0.08)'], [W * 0.62, H * 0.18, 'rgba(40,120,150,0.07)']];
+    for (const [nx, ny, c] of neb) { const g = x.createRadialGradient(nx, ny, 0, nx, ny, Math.max(W, H) * 0.34); g.addColorStop(0, c); g.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = g; x.fillRect(0, 0, W, H); }
+    const n = Math.floor(W * H / 5200);
+    for (let i = 0; i < n; i++) { const px = Math.random() * W, py = Math.random() * H, r = Math.random() * 1.3 + 0.2, a = Math.random() * 0.7 + 0.2; x.fillStyle = `rgba(255,255,255,${a})`; x.beginPath(); x.arc(px, py, r, 0, 7); x.fill(); }
+  }
+  addEventListener('resize', paint); paint();
+})();
+
+// ---------- 程序化视觉（纯 SVG，无外部资源） ----------
+function buildTimeline() {
+  const nodes = [
+    ['约 1500', '万户', '火箭飞天的最早尝试'],
+    ['1609', '伽利略', '望远镜指向星空'],
+    ['1961', '加加林', '首位进入太空的人类'],
+    ['1969', '阿波罗11号', '人类首次踏上月球'],
+    ['1977', '旅行者1号', '飞向星际空间'],
+    ['1990', '哈勃', '重新定义宇宙'],
+    ['2003', '杨利伟', '首位中国航天员'],
+    ['2021', '韦伯', '看见宇宙第一缕光'],
+  ];
+  const W = 760, H = 300, x0 = 64, x1 = W - 64, y = 150, dx = (x1 - x0) / (nodes.length - 1);
+  let s = `<line x1="${x0}" y1="${y}" x2="${x1}" y2="${y}" stroke="rgba(150,200,255,0.35)" stroke-width="2"/>`;
+  nodes.forEach((nd, i) => {
+    const x = x0 + i * dx, up = i % 2 === 0, cy = up ? y - 60 : y + 60;
+    s += `<line x1="${x}" y1="${y}" x2="${x}" y2="${cy}" stroke="rgba(150,200,255,0.22)" stroke-width="1"/>`;
+    s += `<circle cx="${x}" cy="${y}" r="6" fill="#7fd4ff" stroke="#fff" stroke-width="1.5"/>`;
+    const lx = Math.max(44, Math.min(W - 44, x));
+    s += `<text x="${lx}" y="${cy - 14}" fill="#9fd0ff" font-size="15" font-weight="700" text-anchor="middle">${nd[0]}</text>`;
+    s += `<text x="${lx}" y="${cy + 4}" fill="#eaf3ff" font-size="13" text-anchor="middle">${nd[1]}</text>`;
+    s += `<text x="${lx}" y="${cy + 22}" fill="#9fb6c9" font-size="11" text-anchor="middle">${nd[2]}</text>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}">${s}</svg>`;
+}
+function buildSolar() {
+  const cx = 230, cy = 150;
+  const planets = [
+    [40, '#9a8c7a', 9], [66, '#d9b56b', 11], [92, '#3a7bd5', 12], [118, '#c1440e', 10],
+    [150, '#d8a06a', 22], [182, '#e3c98e', 19], [210, '#8fd3e0', 15], [236, '#3b5bdb', 14],
+  ];
+  let s = `<defs><radialGradient id="sun" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#fff6cf"/><stop offset="45%" stop-color="#ffcf5e"/><stop offset="100%" stop-color="#ff8a2a" stop-opacity="0.2"/></radialGradient></defs>`;
+  planets.forEach((p, i) => {
+    s += `<circle cx="${cx}" cy="${cy}" r="${p[0]}" fill="none" stroke="rgba(140,180,230,0.16)" stroke-width="1"/>`;
+    const dur = 9 + i * 4;
+    let dot = `<circle cx="${cx + p[0]}" cy="${cy}" r="${p[2]}" fill="${p[1]}"/>`;
+    if (i === 5) dot += `<ellipse cx="${cx + p[0]}" cy="${cy}" rx="${p[2] * 2}" ry="${p[2] * 0.6}" fill="none" stroke="#e3c98e" stroke-width="2" opacity="0.8"/>`;
+    s += `<g class="orbit-g" style="transform-origin:${cx}px ${cy}px; --dur:${dur}s">${dot}</g>`;
+  });
+  s += `<circle cx="${cx}" cy="${cy}" r="30" fill="url(#sun)"/><circle cx="${cx}" cy="${cy}" r="15" fill="#fff2b0"/>`;
+  return `<svg viewBox="0 0 460 300">${s}</svg>`;
+}
+function buildGalaxy() {
+  const cx = 200, cy = 200; let arms = '', core = '';
+  for (let a = 0; a < 3; a++) {
+    const off = a * (Math.PI * 2 / 3);
+    for (let i = 0; i < 150; i++) {
+      const t = i / 150, ang = off + t * Math.PI * 2.4, rad = 12 + t * 178;
+      const x = cx + Math.cos(ang) * rad + (Math.random() - 0.5) * 18 * (1 - t * 0.6);
+      const y = cy + Math.sin(ang) * rad * 0.62 + (Math.random() - 0.5) * 14 * (1 - t * 0.6);
+      const col = Math.random() < 0.12 ? '#ffb38a' : (Math.random() < 0.2 ? '#9fb8ff' : '#eaf2ff');
+      arms += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(Math.random() * 1.6 + 0.5).toFixed(1)}" fill="${col}" opacity="${(0.5 + Math.random() * 0.5).toFixed(2)}"/>`;
+    }
+  }
+  for (let i = 0; i < 60; i++) { const ang = Math.random() * 7, rad = Math.random() * 22; core += `<circle cx="${(cx + Math.cos(ang) * rad).toFixed(1)}" cy="${(cy + Math.sin(ang) * rad * 0.7).toFixed(1)}" r="${(Math.random() * 1.4 + 0.6).toFixed(1)}" fill="#fff4d6" opacity="${(0.6 + Math.random() * 0.4).toFixed(2)}"/>`; }
+  return `<svg viewBox="0 0 400 400"><defs><radialGradient id="gg" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#fff3cf" stop-opacity="0.9"/><stop offset="35%" stop-color="#ffd9a0" stop-opacity="0.35"/><stop offset="100%" stop-color="#1a2a55" stop-opacity="0"/></radialGradient></defs>`
+    + `<ellipse cx="${cx}" cy="${cy}" rx="195" ry="120" fill="rgba(90,120,200,0.06)"/>`
+    + `<g class="spin-g" style="transform-origin:${cx}px ${cy}px">${arms}${core}</g>`
+    + `<circle cx="${cx}" cy="${cy}" r="60" fill="url(#gg)"/><circle cx="${cx}" cy="${cy}" r="6" fill="#ffe9b0"/></svg>`;
+}
+function buildConstellations() {
+  const CON = {
+    dipper: { name: '北斗七星', sub: '大熊座 · 指极星', pts: [[18, 34], [26, 74], [78, 86], [66, 44], [122, 40], [170, 34], [216, 20]], line: [0, 1, 2, 3, 4, 5, 6], hot: [] },
+    orion: { name: '猎户座', sub: '冬季夜空 · 参宿', pts: [[28, 22], [112, 18], [62, 58], [50, 92], [74, 92], [40, 128], [122, 124]], line: [0, 2, 3, 4, 5, 1, 2, 4, 6], hot: [0] },
+    cass: { name: '仙后座', sub: '拱极 · W 形', pts: [[18, 42], [60, 82], [102, 42], [144, 86], [188, 42]], line: [0, 1, 2, 3, 4], hot: [] },
+    scorpius: { name: '天蝎座', sub: '心宿二 · 红超巨星', pts: [[18, 42], [40, 72], [72, 92], [106, 92], [142, 80], [172, 58], [198, 42], [172, 58]], line: [0, 1, 2, 3, 4, 5, 6, 7], hot: [4] },
+  };
+  const cards = Object.values(CON).map(c => {
+    const W = 230, H = 150;
+    let line = '';
+    if (c.line.length > 1) {
+      let d = `M ${c.pts[c.line[0]][0]} ${c.pts[c.line[0]][1]}`;
+      for (let i = 1; i < c.line.length; i++) d += ` L ${c.pts[c.line[i]][0]} ${c.pts[c.line[i]][1]}`;
+      line = `<path d="${d}" fill="none" stroke="rgba(140,200,255,0.5)" stroke-width="1.2"/>`;
+    }
+    let stars = '';
+    c.pts.forEach((p, i) => {
+      const hot = c.hot.includes(i);
+      const r = hot ? 4.2 : 2.6;
+      stars += `<circle class="tw" cx="${p[0]}" cy="${p[1]}" r="${r}" fill="${hot ? '#ff7a55' : '#eaf3ff'}" style="animation-delay:${(i * 0.4).toFixed(1)}s"/>`;
+    });
+    return `<svg viewBox="0 0 ${W} ${H}" width="210" height="138" style="background:rgba(10,22,46,0.5);border:1px solid rgba(120,200,255,0.25);border-radius:12px;margin:6px">${line}${stars}`
+      + `<text x="12" y="22" fill="#9fd0ff" font-size="13" font-weight="700">${c.name}</text>`
+      + `<text x="12" y="38" fill="#9fb6c9" font-size="10">${c.sub}</text></svg>`;
+  }).join('');
+  return `<div style="display:flex;flex-wrap:wrap;justify-content:center;align-items:center;width:100%">${cards}</div>`;
+}
+function buildEarth() {
+  return `<svg viewBox="0 0 300 300"><defs>
+    <radialGradient id="oc" cx="38%" cy="34%" r="75%"><stop offset="0%" stop-color="#7fc0ff"/><stop offset="55%" stop-color="#2f6fd0"/><stop offset="100%" stop-color="#0d2c66"/></radialGradient>
+    <radialGradient id="atm" cx="50%" cy="50%" r="50%"><stop offset="76%" stop-color="rgba(120,200,255,0)"/><stop offset="92%" stop-color="rgba(130,210,255,0.5)"/><stop offset="100%" stop-color="rgba(130,210,255,0)"/></radialGradient>
+  </defs>
+  <circle cx="150" cy="150" r="128" fill="url(#atm)"/>
+  <circle cx="150" cy="150" r="104" fill="url(#oc)"/>
+  <g fill="#3f9b54" opacity="0.92">
+    <path d="M92 108 q24 -18 46 -6 q14 12 -2 26 q-28 16 -48 2 q-10 -14 4 -22 Z"/>
+    <path d="M150 162 q30 -10 50 6 q10 18 -14 30 q-34 10 -50 -10 q-6 -18 14 -26 Z"/>
+    <path d="M108 200 q20 -6 30 8 q4 14 -14 18 q-20 2 -24 -12 q-2 -10 8 -14 Z"/>
+    <path d="M196 120 q14 -8 22 4 q2 12 -14 14 q-14 0 -14 -10 Z"/>
+  </g>
+  <circle cx="150" cy="150" r="104" fill="none" stroke="rgba(255,255,255,0.16)" stroke-width="1"/>
+  <ellipse cx="234" cy="116" rx="13" ry="13" fill="#cfd4da"/>
+  <circle cx="150" cy="150" r="104" fill="rgba(255,255,255,0.04)"/></svg>`;
+}
+
+// ---------- 章节内容 ----------
+const CINE = [
+  {
+    chapter: '探索编年 · A BRIEF HISTORY', title: '人类，从未停止仰望星空', build: buildTimeline,
+    body: '从明朝<b>万户</b>绑着 47 支火箭飞向长空，到 1609 年<b>伽利略</b>把望远镜对准月亮；从 1961 年<b>加加林</b>成为第一个进入太空的人，到 1969 年阿姆斯特朗在月面留下脚印；从 1977 年<b>旅行者1号</b>带着金唱片飞向星际，到 1990 年<b>哈勃</b>、2021 年<b>韦伯</b>让我们看见宇宙诞生时的第一缕光——<br><br><span class="hl">人类用四百年，把“仰望”变成了“抵达”。</span>今天，这趟旅程交到你手里。',
+  },
+  {
+    chapter: '我们的家 · THE SOLAR SYSTEM', title: '我们的家：太阳系', build: buildSolar,
+    body: '太阳系是我们的家：<b>一颗恒星（太阳）</b>与<b>八颗行星</b>（水·金·地·火·木·土·天·海），以及无数卫星、矮行星与小天体。太阳占系统总质量的 <span class="hl">99.86%</span>。<br><br>地球是唯一已知孕育生命的世界——而在这趟旅程里，你可以飞临、甚至<b>登陆其中多颗行星与卫星</b>，用脚步丈量别的星球。',
+  },
+  {
+    chapter: '星海之中 · THE MILKY WAY', title: '星海之中：银河系', build: buildGalaxy,
+    body: '我们身处<b>银河系</b>——一个拥有 <span class="hl">上千亿颗恒星</span> 的棒旋星系，直径约 <b>10 万光年</b>。太阳系位于一条叫“猎户臂”的旋臂上，距银心约 2.6 万光年，绕银河一圈要 2.3 亿年。<br><br>离我们最近的恒星，是 <span class="hl">4.2 光年</span> 外的比邻星。你眼前的旋臂，正在缓缓转动。',
+  },
+  {
+    chapter: '抬头可见 · CONSTELLATIONS', title: '抬头可见的星宿', build: buildConstellations,
+    body: '在没有灯光的夜晚，古人把恒星连成图案，用来<b>辨别方向、标记季节</b>。西方今天沿用 <b>88 个星座</b>（如猎户座、仙后座、天蝎座）；中国自古则有<b>三垣二十八宿</b>的星官体系，<b>北斗七星</b>更是指引北天的钥匙。<br><br>进入游戏后，按 <b>G</b> 可一键跃迁到这些真实的星野。',
+  },
+  {
+    chapter: '欢迎登船 · WELCOME ABOARD', title: '欢迎登上这趟奇妙旅程', build: buildEarth,
+    body: '准备好了吗，航天员？在这趟旅程里，你可以：<br>· 驾驶飞船<b>飞越星系</b>，靠近星球会被真实挡住<br>· 飞临地球、火星、木星等，按 <b>X</b> <b>登陆星球表面漫步</b><br>· 用 <b>P</b> 拍照，把星辰大海“寄回地球”<br>· 按 <b>G</b> 打开星图、一键跃迁到十大宇宙区域<br><br><span class="hl">宇宙很大，但这一次，它属于你。</span>',
+  },
+];
+
+// ---------- 放映控制 ----------
+const CINE_DUR = 13000;
+let cineIndex = 0, cineTimer = null;
+CINE.forEach(() => { const d = document.createElement('span'); d.className = 'cine-dot'; cineDots.appendChild(d); });
+
+function renderCine(i) {
+  const c = CINE[i];
+  cineChapter.textContent = c.chapter;
+  cineTitle.textContent = c.title;
+  cineBody.innerHTML = c.body;
+  cineStage.innerHTML = c.build ? c.build() : '';
+  [cineStage, cineText].forEach(el => { el.classList.remove('cine-anim'); void el.offsetWidth; el.classList.add('cine-anim'); });
+  [...cineDots.children].forEach((d, idx) => d.classList.toggle('on', idx === i));
+  cineProgress.style.transition = 'none'; cineProgress.style.width = '0%'; void cineProgress.offsetWidth;
+  cineProgress.style.transition = `width ${CINE_DUR}ms linear`; cineProgress.style.width = '100%';
+  cineNext.textContent = (i === CINE.length - 1) ? '开始探索 ▶' : '下一章 ›';
+  cinePrev.style.visibility = i === 0 ? 'hidden' : 'visible';
+  clearTimeout(cineTimer);
+  cineTimer = setTimeout(() => goCine(i + 1), CINE_DUR);
+}
+function goCine(i) { if (i >= CINE.length) { finishCine(); return; } cineIndex = i; renderCine(i); }
+function finishCine() {
+  clearTimeout(cineTimer);
+  Sound.stopCinematic();
+  document.getElementById('cinematic').style.display = 'none';
+  blocker.style.display = 'flex';
+}
+
+cineStart.addEventListener('click', () => {
+  Sound.resume(); Sound.startCinematic();
+  cineGate.style.display = 'none';
+  cineFrame.style.display = 'flex';
+  cineIndex = 0; renderCine(0);
+});
+cineNext.addEventListener('click', () => {
+  if (cineIndex === CINE.length - 1) { finishCine(); return; }
+  goCine(cineIndex + 1);
+});
+cinePrev.addEventListener('click', () => { if (cineIndex > 0) goCine(cineIndex - 1); });
+cineSkip.addEventListener('click', finishCine);
+
+
 function inCurrentZone(L) { return L.zone === currentZone.id; }
 
 let nearest = null;
