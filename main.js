@@ -35,12 +35,14 @@ let missionStart = 0;             // 发射时刻（performance.now）
 let uiOpen = false;               // 星图航图 / 图鉴是否打开（避免误触发暂停）
 let flyTo = null;                 // 区域跃迁目标 {target, zone}
 let currentZone = ZONES[0];       // 当前所在区域（就近判定）
+let mode = 'roam';                // 'roam' | 'expedition'（火星远征剧情模式）
 
 controls.addEventListener('lock', () => {
   blocker.style.display = 'none';
   if (gameState === 'paused') { gameState = 'flying'; hidePause(); }
 });
 controls.addEventListener('unlock', () => {
+  if (mode === 'expedition') return;                    // 远征中 ESC 不触发漫游暂停
   if (uiOpen) return;                                   // 打开航图/图鉴时不进入暂停
   if (gameState === 'flying') { gameState = 'paused'; showPause(); }
   else if (gameState === 'countdown') {                 // 倒计时中误按 ESC：回到开场
@@ -375,6 +377,7 @@ function buildLocations() {
     label.position.copy(p).add(new THREE.Vector3(0, L.radius * 0.9 + 140, 0));
     label.scale.multiplyScalar(Math.max(220, L.radius * 0.9));
     scene.add(label);
+    L._label = label;
 
     if (L.isStar) {
       const mesh = new THREE.Mesh(
@@ -613,6 +616,11 @@ composer.addPass(bloom);
 const keys = {};
 addEventListener('keydown', e => {
   keys[e.code] = true;
+  if (mode === 'expedition') {
+    if (e.code === 'KeyR') endExpedition();
+    if (e.code === 'KeyM') toggleExpBrief();
+    return;
+  }
   if (e.code === 'KeyE') toggleCard();
   if (e.code === 'KeyH') toggleHelp();
   if (e.code === 'KeyR') triggerReturn();
@@ -1048,7 +1056,7 @@ function animate() {
       flyTo = null;
       showZoneBanner(currentZone);
     }
-  } else if (controls.isLocked && gameState === 'flying' && !interiorActive) {
+  } else if (controls.isLocked && gameState === 'flying' && !interiorActive && mode === 'roam') {
     camera.getWorldDirection(tmp.fwd);
     tmp.right.crossVectors(tmp.fwd, camera.up).normalize();
     tmp.up.crossVectors(tmp.right, tmp.fwd).normalize();
@@ -1074,9 +1082,444 @@ function animate() {
     if (L._clouds) L._clouds.rotation.y += dt * 0.02;
   }
   composer.render();
-  updateHUD();
+  if (mode === 'expedition') updateExpedition(dt); else updateHUD();
 }
 animate();
+
+/* =====================================================================
+   火星远征模式（剧情 · 硬核科幻纪实）
+   流程：发射台 → 倒计时点火 → 升空(海拔里程碑) → 入轨失重 → 地火巡航
+        → 进入火星大气 → 着陆 → 地表自由探索(成就)
+   ===================================================================== */
+const exp = {
+  active: false, phase: 'pad', t: 0, alt: 0, reached: {}, achievements: new Set(),
+  group: null, rocket: null, flame: null, flameOn: false, earth: null, marsFar: null,
+  debris: [], surface: null, player: { vy: 0, onGround: true }, pois: [], dust: null,
+  phobos: null, deimos: null,
+};
+
+/* ---------- 远征 DOM ---------- */
+const expHud = document.getElementById('exp-hud');
+const expPhaseEl = document.getElementById('exp-phase');
+const expAltNum = document.getElementById('exp-alt-num');
+const expAltFill = document.getElementById('exp-alt-fill');
+const expSub = document.getElementById('exp-sub');
+const expObj = document.getElementById('exp-obj');
+const expToasts = document.getElementById('exp-toasts');
+const expBrief = document.getElementById('exp-brief');
+
+function showExpeditionUI(on) {
+  expHud.style.display = on ? 'block' : 'none';
+  document.getElementById('hud').style.display = on ? 'none' : '';
+  document.getElementById('minimap-wrap').style.display = on ? 'none' : '';
+  document.getElementById('edge-markers').style.display = on ? 'none' : '';
+  document.getElementById('help').style.display = 'none';
+}
+function setRoamVisibility(v) {
+  for (const L of LOCATIONS) {
+    if (L._mesh) L._mesh.visible = v;
+    if (L._label) L._label.visible = v;
+  }
+}
+
+/* ---------- 建模：火箭 / 发射台 / 地球 ---------- */
+function makeRocket() {
+  const g = new THREE.Group();
+  const bodyMat = new THREE.MeshStandardMaterial({ color: 0xf2f4f7, metalness: 0.3, roughness: 0.55 });
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(26, 26, 220, 32), bodyMat);
+  body.position.y = 130; g.add(body);
+  const band = new THREE.Mesh(new THREE.CylinderGeometry(26.6, 26.6, 26, 32),
+    new THREE.MeshStandardMaterial({ color: 0x222831, roughness: 0.6 }));
+  band.position.y = 58; g.add(band);
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(26, 74, 32),
+    new THREE.MeshStandardMaterial({ color: 0xd23b2e, metalness: 0.3, roughness: 0.5 }));
+  nose.position.y = 240 + 37; g.add(nose);
+  const finMat = new THREE.MeshStandardMaterial({ color: 0xd23b2e, roughness: 0.5 });
+  for (let i = 0; i < 4; i++) {
+    const fin = new THREE.Mesh(new THREE.BoxGeometry(6, 64, 44), finMat);
+    const a = i / 4 * Math.PI * 2;
+    fin.position.set(Math.cos(a) * 30, 26, Math.sin(a) * 30);
+    fin.lookAt(0, 26, 0); fin.rotateY(Math.PI / 2);
+    g.add(fin);
+  }
+  const engMat = new THREE.MeshStandardMaterial({ color: 0x333944, metalness: 0.7, roughness: 0.4 });
+  for (let i = 0; i < 3; i++) {
+    const e = new THREE.Mesh(new THREE.CylinderGeometry(8, 13, 26, 16), engMat);
+    e.position.set((i - 1) * 17, 6, 0); g.add(e);
+  }
+  const flame = new THREE.Mesh(new THREE.ConeGeometry(22, 170, 24, 1, true),
+    new THREE.MeshBasicMaterial({ color: 0xffb347, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+  flame.position.y = -82; flame.rotation.x = Math.PI; flame.visible = false; g.add(flame);
+  exp.flame = flame;
+  return g;
+}
+function makeLaunchpad() {
+  const g = new THREE.Group();
+  const pad = new THREE.Mesh(new THREE.CylinderGeometry(120, 142, 16, 40),
+    new THREE.MeshStandardMaterial({ color: 0x3a3f47, roughness: 0.9 }));
+  pad.position.y = 8; g.add(pad);
+  const tower = new THREE.Mesh(new THREE.BoxGeometry(14, 210, 14),
+    new THREE.MeshStandardMaterial({ color: 0x586069, roughness: 0.8 }));
+  tower.position.set(74, 105, 0); g.add(tower);
+  return g;
+}
+function makeExpeditionEarth() {
+  const m = new THREE.Mesh(new THREE.SphereGeometry(900, 48, 48),
+    new THREE.MeshStandardMaterial({ map: makeEarthTexture(), roughness: 0.92 }));
+  addAtmosphere(m, 900, 0x6db4ff);
+  return m;
+}
+function makeFarMars() {
+  return new THREE.Mesh(new THREE.SphereGeometry(320, 48, 48),
+    new THREE.MeshStandardMaterial({ map: makePlanetTexture(0xc1440e, { spots: 80 }), roughness: 1 }));
+}
+
+/* ---------- 失重漂浮物 ---------- */
+function buildDebris(group) {
+  const items = [
+    { geo: new THREE.BoxGeometry(12, 5, 5), col: 0xcccccc },
+    { geo: new THREE.SphereGeometry(8, 16, 16), col: 0x66bbff, trans: true },
+    { geo: new THREE.CylinderGeometry(2.4, 2.4, 24, 8), col: 0xdd5533 },
+    { geo: new THREE.TorusGeometry(9, 2.4, 8, 16), col: 0xffcc55 },
+    { geo: new THREE.BoxGeometry(8, 8, 8), col: 0x8fd0a0 },
+  ];
+  for (let i = 0; i < 16; i++) {
+    const it = items[i % items.length];
+    const m = new THREE.Mesh(it.geo, new THREE.MeshStandardMaterial({
+      color: it.col, transparent: !!it.trans, opacity: it.trans ? 0.7 : 1, roughness: 0.6,
+    }));
+    m.visible = false;
+    m.userData.v = new THREE.Vector3((Math.random() - 0.5) * 32, (Math.random() - 0.5) * 32, (Math.random() - 0.5) * 32);
+    m.userData.base = new THREE.Vector3((Math.random() - 0.5) * 220, (Math.random() - 0.5) * 220, (Math.random() - 0.5) * 220);
+    group.add(m); exp.debris.push(m);
+  }
+}
+function showZeroG(on) { for (const d of exp.debris) d.visible = on; }
+function keepDebris(dt) {
+  for (const d of exp.debris) {
+    d.position.addScaledVector(d.userData.v, dt);
+    if (d.position.distanceTo(camera.position) > 280) d.position.copy(camera.position).add(d.userData.base);
+    d.rotation.x += dt * 0.8; d.rotation.y += dt * 1.1;
+  }
+}
+function igniteFlame(on) { exp.flameOn = on; if (exp.flame) exp.flame.visible = on; }
+
+/* ---------- 火星地表建模 ---------- */
+function makeMarsGroundTexture() {
+  const c = document.createElement('canvas'); c.width = c.height = 1024;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#a8552e'; ctx.fillRect(0, 0, 1024, 1024);
+  for (let i = 0; i < 2600; i++) {
+    const x = Math.random() * 1024, y = Math.random() * 1024, r = 2 + Math.random() * 16;
+    const s = 0.55 + Math.random() * 0.7;
+    const col = new THREE.Color('#a8552e').multiplyScalar(s);
+    ctx.fillStyle = `rgba(${col.r * 255 | 0},${col.g * 255 | 0},${col.b * 255 | 0},0.5)`;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+  }
+  for (let i = 0; i < 140; i++) {
+    const x = Math.random() * 1024, y = Math.random() * 1024, r = 22 + Math.random() * 70;
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, 'rgba(58,28,16,0.55)'); g.addColorStop(1, 'rgba(58,28,16,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(10, 10); return t;
+}
+function craterField(x, z) {
+  let d = 0;
+  const craters = [[900, 400, 280], [-1500, -700, 380], [2200, 1900, 320], [-1000, 2400, 240], [3200, -1500, 300]];
+  for (const [cx, cz, r] of craters) {
+    const dd = Math.hypot(x - cx, z - cz);
+    if (dd < r) d -= (1 - dd / r) * 130;
+  }
+  return d;
+}
+function makeDust() {
+  const n = 1300, g = new THREE.BufferGeometry(); const pos = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    pos[i * 3] = (Math.random() - 0.5) * 9000;
+    pos[i * 3 + 1] = Math.random() * 1600;
+    pos[i * 3 + 2] = (Math.random() - 0.5) * 9000;
+  }
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const m = new THREE.PointsMaterial({ color: 0xe8c9a0, size: 18, transparent: true, opacity: 0.5, depthWrite: false });
+  return new THREE.Points(g, m);
+}
+function addRover(group, x, z) {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.BoxGeometry(60, 30, 92),
+    new THREE.MeshStandardMaterial({ color: 0xd8d8d8, metalness: 0.4, roughness: 0.6 }));
+  body.position.y = 28; g.add(body);
+  const mast = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 44, 8),
+    new THREE.MeshStandardMaterial({ color: 0x333333 }));
+  mast.position.set(0, 58, -32); g.add(mast);
+  const cam = new THREE.Mesh(new THREE.BoxGeometry(16, 11, 11),
+    new THREE.MeshStandardMaterial({ color: 0x222222 }));
+  cam.position.set(0, 80, -32); g.add(cam);
+  for (const sx of [-26, 26]) for (const sz of [-32, 32]) {
+    const w = new THREE.Mesh(new THREE.CylinderGeometry(17, 17, 11, 16),
+      new THREE.MeshStandardMaterial({ color: 0x111111 }));
+    w.rotation.z = Math.PI / 2; w.position.set(sx, 17, sz); g.add(w);
+  }
+  g.position.set(x, 0, z); g.rotation.y = 0.6; group.add(g);
+}
+function makePOI(group, x, y, z, name, desc, id) {
+  const beam = new THREE.Mesh(new THREE.CylinderGeometry(26, 26, 1700, 16, 1, true),
+    new THREE.MeshBasicMaterial({ color: 0x66e0ff, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+  beam.position.set(x, 850, z); group.add(beam);
+  const ring = new THREE.Mesh(new THREE.RingGeometry(120, 152, 44),
+    new THREE.MeshBasicMaterial({ color: 0x66e0ff, transparent: true, opacity: 0.7, side: THREE.DoubleSide }));
+  ring.rotation.x = -Math.PI / 2; ring.position.set(x, 22, z); group.add(ring);
+  const label = makeTextSprite(name); label.position.set(x, 1780, z); label.scale.multiplyScalar(2.4); group.add(label);
+  return { x, y, z, name, desc, id, beam, ring, label, done: false };
+}
+function buildMarsSurface(group) {
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(30000, 32, 16),
+    new THREE.MeshBasicMaterial({ color: 0xd8b48a, side: THREE.BackSide }));
+  group.add(sky);
+  const sun = new THREE.DirectionalLight(0xffe9c8, 2.1); sun.position.set(-3000, 1400, -4000); group.add(sun);
+  group.add(new THREE.AmbientLight(0x6b5640, 0.75));
+  const SIZE = 13000, SEG = 200;
+  const geo = new THREE.PlaneGeometry(SIZE, SIZE, SEG, SEG);
+  geo.rotateX(-Math.PI / 2);
+  const pos = geo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), z = pos.getZ(i);
+    let y = Math.sin(x * 0.0009) * 42 + Math.cos(z * 0.0011) * 38 + Math.sin((x + z) * 0.0006) * 30;
+    y += craterField(x, z);
+    pos.setY(i, y);
+  }
+  geo.computeVertexNormals();
+  const ground = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: makeMarsGroundTexture(), roughness: 1, metalness: 0 }));
+  group.add(ground);
+  const olympus = new THREE.Mesh(new THREE.ConeGeometry(2600, 2100, 64),
+    new THREE.MeshStandardMaterial({ color: 0xb5532e, roughness: 1 }));
+  olympus.position.set(-7200, 1050, -8200); group.add(olympus);
+  const canyon = new THREE.Mesh(new THREE.BoxGeometry(9200, 620, 1500),
+    new THREE.MeshStandardMaterial({ color: 0x5e2f1c, roughness: 1 }));
+  canyon.position.set(6100, -300, 2050); canyon.rotation.y = 0.42; group.add(canyon);
+  const phobos = new THREE.Mesh(new THREE.SphereGeometry(130, 16, 16),
+    new THREE.MeshStandardMaterial({ color: 0x8a8076, roughness: 1 }));
+  phobos.position.set(4200, 3600, -6000); group.add(phobos); exp.phobos = phobos;
+  const deimos = new THREE.Mesh(new THREE.SphereGeometry(72, 16, 16),
+    new THREE.MeshStandardMaterial({ color: 0x9a9088, roughness: 1 }));
+  deimos.position.set(-5000, 4300, -5200); group.add(deimos); exp.deimos = deimos;
+  const dust = makeDust(); group.add(dust); exp.dust = dust;
+  addRover(group, 0, 0);
+  exp.pois = [
+    makePOI(group, -7200, 1100, -8200, '奥林匹斯山', '太阳系最高山峰：高约 21.9 公里，约为珠穆朗玛峰的近 3 倍。它是一座“盾状火山”，由远古火星极度活跃的岩浆缓慢层层堆叠而成，底座比整个夏威夷还大。', 'olympus'),
+    makePOI(group, 6100, 60, 2050, '水手谷', '一条长逾 4000 公里、深达 7 公里的大峡谷，足以横贯整个中国。它由火星外壳张裂形成，是行星地质的一道巨大伤疤，也是太阳系最长峡谷。', 'marineris'),
+    makePOI(group, 2600, 40, -1200, '盖尔陨石坑 · 好奇号', '直径 154 公里的古老撞击坑。NASA“好奇号”火星车 2012 年在此着陆，钻探出的泥岩证明：这里在数十亿年前曾是一个有水的湖泊。', 'gale'),
+    makePOI(group, -2600, 50, 1650, '耶泽罗陨石坑 · 毅力号', '保存完好的古河流三角洲。NASA“毅力号”2021 年着陆于此，专门寻找可能的微生物化石，并首次在火星上利用二氧化碳制造出氧气（MOXIE）。', 'jezero'),
+    makePOI(group, 0, 30, 4300, '北极冰盖', '火星两极覆盖着水冰与干冰（固态二氧化碳）。雷达探测证实地下藏有巨量水冰——这是未来火星殖民者最宝贵的资源：喝的水、呼吸的氧、推进的燃料，都能从中提取。', 'ice'),
+  ];
+}
+
+/* ---------- 流程控制 ---------- */
+function startExpedition() {
+  if (mode === 'expedition') return;
+  mode = 'expedition';
+  exp.active = true; exp.phase = 'countdown'; exp.t = 0; exp.alt = 0; exp.reached = {}; exp.achievements.clear(); exp.debris = [];
+  setRoamVisibility(false);
+  showExpeditionUI(true);
+  sunLight.intensity = 0;
+  document.getElementById('blocker').style.display = 'none';
+  const g = new THREE.Group(); exp.group = g; scene.add(g);
+  g.add(makeLaunchpad());
+  exp.rocket = makeRocket(); g.add(exp.rocket);
+  exp.earth = makeExpeditionEarth(); exp.earth.position.set(0, -1400, -200); g.add(exp.earth);
+  const key = new THREE.DirectionalLight(0xfff2e0, 2.4); key.position.set(260, 700, 360); g.add(key);
+  g.add(new THREE.AmbientLight(0x334455, 0.5));
+  buildDebris(g);
+  camera.position.set(190, 130, 380);
+  camera.lookAt(0, 170, 0);
+  gameState = 'flying';
+  controls.lock();
+  expMilestone('火星远征 · 任务简报', '你站在发射台上，脚下是巨型运载火箭。前方之旅：升空 → 失重 → 地火巡航 → 着陆火星 → 地表探索。所有数据均为真实航天参数。按 M 可随时调出任务简报。');
+  runExpCountdown();
+}
+function runExpCountdown() {
+  const launchEl = document.getElementById('launch');
+  const launchNum = document.getElementById('launch-num');
+  const launchSub = document.getElementById('launch-sub');
+  launchEl.style.display = 'flex';
+  const seq = ['T-3', 'T-2', 'T-1', '🔥 点火'];
+  let i = 0;
+  const step = () => {
+    launchNum.textContent = seq[i];
+    launchNum.classList.remove('pop'); void launchNum.offsetWidth; launchNum.classList.add('pop');
+    launchSub.textContent = i < 3 ? '火星远征 · 系统自检' : '星舰点火 · 出发！';
+    if (i < seq.length - 1) { i++; setTimeout(step, 800); }
+    else { setTimeout(() => { launchEl.style.display = 'none'; exp.phase = 'ascent'; exp.t = 0; igniteFlame(true); }, 1200); }
+  };
+  step();
+}
+function milestone(km, title, desc) {
+  if (exp.alt >= km && !exp.reached[km]) {
+    exp.reached[km] = true;
+    expMilestone(title, desc);
+    if (km === 100) unlockAch('karman', '跨越卡门线');
+  }
+}
+function updateAscent(dt) {
+  const dur = 15;
+  const k = Math.min(1, exp.t / dur);
+  exp.alt = k * 400;
+  const rocketY = 160 + k * 5400;
+  exp.rocket.position.y = rocketY;
+  camera.position.set(190, rocketY - 230, 380);
+  camera.lookAt(0, rocketY + 120, 0);
+  exp.earth.position.y = -1400 - k * 240;
+  milestone(13, '突破 Max-Q（最大动压区）', '海拔约 13 公里。此刻空气最稠密、速度最快，二者叠加让火箭外壳承受最大应力——这是整个发射中最惊险的几十秒，结构工程师最紧张的时刻。');
+  milestone(100, '抵达卡门线', '海拔 100 公里，国际公认的“太空边界”。天空在此终结，星辰开始。这里的大气已稀薄到无法支撑飞机机翼，你正式进入了“太空”。');
+  milestone(400, '进入近地轨道', '海拔约 400 公里（与国际空间站同高）。速度约 7.8 km/s，与地球引力达成精妙平衡——你成为了一颗人造卫星，90 分钟就能绕地球一圈。');
+  if (k >= 1) { exp.phase = 'orbit'; exp.t = 0; igniteFlame(false); unlockAch('orbit', '成功入轨'); showSub('发动机关机，进入惯性滑行……'); }
+}
+function updateOrbit(dt) {
+  if (!exp.reached.zeroG) {
+    exp.reached.zeroG = true;
+    unlockAch('zerog', '体验失重');
+    showZeroG(true);
+    expMilestone('失重降临', '上面级关机，绑带松开——笔、水珠、还有你自己，都轻轻地飘了起来。这就是微重力：在这里没有绝对的“上”与“下”，一切都自由悬浮。');
+  }
+  const a = exp.t * 0.3;
+  camera.position.set(Math.cos(a) * 440, 180 + Math.sin(a * 0.7) * 130, Math.sin(a) * 440);
+  camera.lookAt(0, 220, 0);
+  keepDebris(dt);
+  if (exp.t > 8) {
+    exp.phase = 'transit'; exp.t = 0;
+    expMilestone('地火转移点火', '再次点火，把速度加到第二宇宙速度（11.2 km/s），挣脱地球引力，奔向火星。接下来把约 7 个月的航程，压缩成一段安静的星际漂流。');
+  }
+}
+function updateTransit(dt) {
+  const dur = 17; const k = Math.min(1, exp.t / dur);
+  exp.earth.position.z = -200 - k * 4200; exp.earth.scale.setScalar(1 - k * 0.72);
+  if (!exp.marsFar) { exp.marsFar = makeFarMars(); exp.group.add(exp.marsFar); }
+  exp.marsFar.position.set(0, 220, 700 + (1 - k) * 5200);
+  exp.marsFar.scale.setScalar(0.18 + k * 1.05);
+  camera.position.lerp(new THREE.Vector3(0, 260, 160), 0.02);
+  camera.lookAt(0, 220, 2200);
+  keepDebris(dt);
+  if (k >= 1) { exp.phase = 'edl'; exp.t = 0; expMilestone('接近火星', '前方那颗锈红色的星球越来越大。接下来是最惊险的一段：以每秒数公里的速度冲进虽稀薄却足以烧红防热罩的大气。'); }
+}
+function updateEDL(dt) {
+  const dur = 11; const k = Math.min(1, exp.t / dur);
+  const startY = 4200, endY = 170;
+  camera.position.set(0, startY * (1 - k) + endY * k, 1500 - k * 1300);
+  camera.lookAt(0, 70, 0);
+  if (k >= 1) enterSurface();
+}
+function enterSurface() {
+  exp.phase = 'surface'; exp.t = 0;
+  unlockAch('land', '成功登陆火星');
+  expMilestone('着陆 · 乌托邦平原', '反推引擎熄火，着陆腿稳稳触地。你站在了距地球数千万公里的红色星球上。这里的重力只有地球的 0.38——轻轻一跳，就能跃起近一米高。');
+  if (exp.group) scene.remove(exp.group);
+  exp.group = new THREE.Group(); scene.add(exp.group);
+  buildMarsSurface(exp.group);
+  scene.background = new THREE.Color(0xc9a07a);
+  scene.fog = new THREE.FogExp2(0xc9a07a, 0.00032);
+  camera.position.set(0, 18, 0);
+  camera.lookAt(0, 32, -220);
+  if (!controls.isLocked) { try { controls.lock(); } catch (e) {} }
+  showZeroG(false);
+  expObj.textContent = '走向发光光柱，解锁火星地标（剩余 5 处）';
+}
+function updateSurface(dt) {
+  camera.getWorldDirection(tmp.fwd);
+  tmp.right.crossVectors(tmp.fwd, camera.up).normalize();
+  const fwd = new THREE.Vector3(tmp.fwd.x, 0, tmp.fwd.z).normalize();
+  const right = new THREE.Vector3(tmp.right.x, 0, tmp.right.z).normalize();
+  const move = new THREE.Vector3();
+  if (keys['KeyW']) move.add(fwd);
+  if (keys['KeyS']) move.sub(fwd);
+  if (keys['KeyD']) move.add(right);
+  if (keys['KeyA']) move.sub(right);
+  const speed = 280;
+  if (move.lengthSq() > 0) { move.normalize().multiplyScalar(speed * dt); camera.position.x += move.x; camera.position.z += move.z; }
+  const g = 14; // 火星 0.38g 的“飘”感
+  if (keys['Space'] && exp.player.onGround) { exp.player.vy = 23; exp.player.onGround = false; }
+  exp.player.vy -= g * dt;
+  camera.position.y += exp.player.vy * dt;
+  if (camera.position.y <= 18) { camera.position.y = 18; exp.player.vy = 0; exp.player.onGround = true; }
+  const R = 5800; const d = Math.hypot(camera.position.x, camera.position.z);
+  if (d > R) { camera.position.x *= R / d; camera.position.z *= R / d; }
+  if (exp.dust) exp.dust.rotation.y += dt * 0.01;
+  if (exp.phobos) { exp.phobos.position.x = Math.cos(exp.t * 0.05) * 4400; exp.phobos.position.z = -6000 + Math.sin(exp.t * 0.05) * 1600; }
+  if (exp.deimos) { exp.deimos.position.x = Math.cos(-exp.t * 0.03) * 5200; exp.deimos.position.z = -5200 + Math.sin(-exp.t * 0.03) * 1500; }
+  for (const p of exp.pois) {
+    const dd = Math.hypot(camera.position.x - p.x, camera.position.z - p.z);
+    if (dd < 720 && !p.done) { p.done = true; unlockAch(p.id, p.name); expMilestone(p.name, p.desc); }
+    if (p.beam) { p.beam.material.opacity = p.done ? 0.14 : 0.55; p.beam.scale.y = 1 + 0.1 * Math.sin(exp.t * 3 + p.x); }
+  }
+  const left = exp.pois.filter(p => !p.done).length;
+  expObj.textContent = left > 0 ? `走向发光光柱，解锁火星地标（剩余 ${left} 处）` : '✦ 全部地标已解锁！你已完成火星巡视，恭喜宇航员 🚀';
+}
+
+/* ---------- 字幕 / 成就 / 简报 ---------- */
+function expMilestone(title, desc) {
+  expSub.innerHTML = `<div class="exp-ms-title">${title}</div><div class="exp-ms-desc">${desc}</div>`;
+  expSub.classList.remove('show'); void expSub.offsetWidth; expSub.classList.add('show');
+}
+function showSub(text) { expMilestone('·', text); }
+function unlockAch(id, label) {
+  if (exp.achievements.has(id)) return;
+  exp.achievements.add(id);
+  const d = document.createElement('div'); d.className = 'exp-toast'; d.textContent = '🏅 成就解锁：' + label;
+  expToasts.appendChild(d);
+  setTimeout(() => d.classList.add('out'), 3200);
+  setTimeout(() => d.remove(), 3900);
+}
+function phaseLabel(p) {
+  return { pad: '发射台', countdown: '倒计时', ascent: '升空', orbit: '近地轨道 · 失重', transit: '地火巡航', edl: '进入火星大气', surface: '火星地表探索' }[p] || '';
+}
+function updateExpeditionHUD() {
+  expPhaseEl.textContent = phaseLabel(exp.phase);
+  if (exp.phase === 'ascent' || exp.phase === 'orbit') {
+    expAltNum.textContent = Math.round(exp.alt);
+    expAltFill.style.height = Math.min(100, exp.alt / 400 * 100) + '%';
+  } else { expAltNum.textContent = '—'; expAltFill.style.height = '0%'; }
+}
+function updateExpedition(dt) {
+  exp.t += dt;
+  switch (exp.phase) {
+    case 'ascent': updateAscent(dt); break;
+    case 'orbit': updateOrbit(dt); break;
+    case 'transit': updateTransit(dt); break;
+    case 'edl': updateEDL(dt); break;
+    case 'surface': updateSurface(dt); break;
+  }
+  if (exp.flame) { const s = 0.7 + Math.random() * 0.6; exp.flame.scale.set(1, s, 1); }
+  updateExpeditionHUD();
+}
+function toggleExpBrief() {
+  if (expBrief.style.display === 'flex') {
+    expBrief.style.display = 'none';
+    if (mode === 'expedition' && !controls.isLocked) controls.lock();
+  } else {
+    expBrief.style.display = 'flex';
+    if (controls.isLocked) controls.unlock();
+  }
+}
+function endExpedition() {
+  if (mode !== 'expedition') return;
+  mode = 'roam'; exp.active = false;
+  if (exp.group) { scene.remove(exp.group); exp.group = null; }
+  setRoamVisibility(true);
+  scene.background = new THREE.Color(0x000006);
+  scene.fog = new THREE.FogExp2(0x000006, 0.0000008);
+  sunLight.intensity = 4.5;
+  showExpeditionUI(false);
+  expBrief.style.display = 'none';
+  camera.position.set(3450, 220, 520);
+  camera.lookAt(0, 0, 0);
+  velocity.set(0, 0, 0); flyTo = null; currentZone = ZONES[0];
+  fovTarget = 72; camera.fov = 72; camera.updateProjectionMatrix();
+  gameState = 'intro';
+  document.getElementById('blocker').style.display = 'flex';
+}
+
+document.getElementById('btn-expedition').addEventListener('click', startExpedition);
+document.getElementById('btn-eb-close').addEventListener('click', toggleExpBrief);
 
 /* ---------------- 自适应 ---------------- */
 addEventListener('resize', () => {
