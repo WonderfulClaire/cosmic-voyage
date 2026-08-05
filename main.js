@@ -188,35 +188,37 @@ function makeTextSprite(text) {
 }
 
 /* ---------------- 逼真地球 / 行星大气 ---------------- */
+// 从太空看，地球必须一眼可辨：用等距投影手绘出可辨认的大陆轮廓（美洲 / 欧亚 / 非洲 / 澳洲 / 南极 / 格陵兰）
 function makeEarthTexture() {
   const c = document.createElement('canvas'); c.width = 1024; c.height = 512;
   const ctx = c.getContext('2d');
-  const g = ctx.createLinearGradient(0, 0, 0, 512);
-  g.addColorStop(0, '#0b2c57'); g.addColorStop(0.5, '#0e4078'); g.addColorStop(1, '#0b2c57');
-  ctx.fillStyle = g; ctx.fillRect(0, 0, 1024, 512);
-  // 大陆：若干绿/棕椭圆斑块，拼出“有陆地有海洋”的观感
-  const land = [
-    [180, 165, 150, 110, '#2f7d34'], [300, 250, 120, 92, '#3a8a3f'], [140, 330, 110, 80, '#6b8e3a'],
-    [520, 150, 140, 100, '#2f7d34'], [640, 260, 120, 90, '#7a8a3a'], [560, 360, 100, 70, '#5a7a34'],
-    [820, 180, 130, 95, '#2f7d34'], [905, 300, 110, 80, '#6b8e3a'], [760, 400, 90, 60, '#4a7a38'],
-    [420, 430, 80, 55, '#5a7a34'], [250, 420, 70, 50, '#4f7a34'],
-  ];
-  for (const [x, y, w, h, col] of land) {
-    ctx.fillStyle = col;
-    ctx.beginPath(); ctx.ellipse(x, y, w, h, Math.random() * 0.4, 0, 7); ctx.fill();
+  const og = ctx.createLinearGradient(0, 0, 0, 512);
+  og.addColorStop(0, '#0a2f63'); og.addColorStop(0.5, '#0e4a8a'); og.addColorStop(1, '#0a2f63');
+  ctx.fillStyle = og; ctx.fillRect(0, 0, 1024, 512);
+  const land = (pts, col) => {
+    ctx.fillStyle = col; ctx.beginPath();
+    pts.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]));
+    ctx.closePath(); ctx.fill();
+  };
+  const GREEN = '#2f7d34', GREEN2 = '#3c8a3f', DARK = '#5a7a34';
+  land([[150,80],[230,65],[300,90],[330,130],[310,170],[270,210],[250,232],[225,214],[236,190],[200,200],[180,175],[165,140],[140,110]], GREEN); // 北美
+  land([[372,46],[414,40],[432,66],[406,92],[376,82],[364,60]], '#eef4fb'); // 格陵兰
+  land([[280,250],[330,255],[356,292],[345,342],[320,402],[300,436],[284,420],[296,370],[268,330],[263,290]], GREEN); // 南美
+  land([[490,96],[546,90],[562,116],[540,142],[506,156],[484,134]], DARK); // 欧洲
+  land([[500,150],[560,144],[606,170],[616,222],[600,282],[575,342],[555,376],[534,360],[546,310],[514,268],[504,210],[494,176]], GREEN); // 非洲
+  land([[560,110],[642,80],[742,75],[832,96],[876,132],[860,172],[820,202],[760,222],[700,216],[650,190],[600,166],[564,140]], GREEN); // 亚洲
+  land([[650,206],[696,212],[682,252],[660,242]], GREEN2); // 印度次大陆
+  land([[800,236],[852,242],[856,266],[810,272],[794,256]], GREEN2); // 东南亚
+  land([[840,310],[906,306],[940,332],[924,362],[880,374],[846,356],[834,332]], '#7a8a3a'); // 澳大利亚
+  land([[0,482],[1024,482],[1024,512],[0,512]], '#eef4fb'); // 南极洲
+  land([[40,470],[200,462],[420,468],[640,460],[860,466],[1000,470],[1024,482],[0,482]], '#eef4fb');
+  // 沙漠（撒哈拉 / 中亚 / 澳洲内陆）
+  for (const [x,y,w,h] of [[540,200,72,42],[576,216,58,30],[500,206,40,22],[860,335,46,22],[700,150,62,28],[330,300,40,22]]) {
+    ctx.fillStyle = 'rgba(200,170,110,0.55)'; ctx.fillRect(x - w/2, y - h/2, w, h);
   }
-  // 沙漠/裸土点缀
-  ctx.fillStyle = 'rgba(205,175,115,0.45)';
-  for (let i = 0; i < 46; i++) {
-    const x = Math.random() * 1024, y = Math.random() * 512;
-    ctx.beginPath(); ctx.ellipse(x, y, 12 + Math.random() * 30, 8 + Math.random() * 20, 0, 0, 7); ctx.fill();
-  }
-  // 极冠（南北冰盖）
-  ctx.fillStyle = 'rgba(245,250,255,0.95)';
-  ctx.fillRect(0, 0, 1024, 34); ctx.fillRect(0, 478, 1024, 34);
-  ctx.fillStyle = 'rgba(245,250,255,0.6)';
-  ctx.beginPath(); ctx.ellipse(512, 34, 300, 28, 0, 0, 7); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(512, 478, 300, 28, 0, 0, 7); ctx.fill();
+  // 极冠
+  ctx.fillStyle = 'rgba(245,250,255,0.92)'; ctx.fillRect(0, 0, 1024, 26);
+  ctx.beginPath(); ctx.ellipse(512, 26, 360, 22, 0, 0, 7); ctx.fill();
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
 }
 function makeCloudTexture() {
@@ -653,10 +655,11 @@ function buildLocations() {
     }
   }
   // 标记实心天体（漫游时不可穿过）与可着陆天体
+  const glowTypes = L => L.isNebula || L.isGalaxy || L.isBubble || L.isCMB || L.isPlanetary || L.isCraft || L.isGlobular || L.isScatter || L.isQuasar || L.isSpiral || L.isBelt;
   for (const L of LOCATIONS) {
-    L._solid = !!(L.isStar || L.isBlackHole || L.isRedGiant || L.isWhiteDwarf || L.isEarth || L.isMoon || L.isDwarf || L.isPulsar || L.isMagnetar || L.isNeutronBinary || L.isComet ||
-      (!L.isNebula && !L.isGalaxy && !L.isBubble && !L.isCMB && !L.isBelt && !L.isPlanetary && !L.isCraft && !L.isGlobular && !L.isScatter && !L.isQuasar && L._mesh));
-    L._landable = new Set(['mercury', 'venus', 'earth', 'moon', 'mars', 'pluto', 'ceres', 'europa', 'enceladus']).has(L.id);
+    L._solid = !!(L._mesh && !glowTypes(L));
+    L._landable = new Set(['mercury', 'venus', 'earth', 'moon', 'mars', 'pluto', 'ceres', 'europa', 'enceladus',
+      'proxima', 'trappist1e', 'kepler452b', 'lhs1140b', 'belt', 'jupiter', 'saturn', 'uranus', 'neptune', 'hotjupiter']).has(L.id);
   }
 }
 
@@ -688,7 +691,14 @@ addEventListener('keydown', e => {
     return;
   }
   // 漫游中：靠近可着陆行星按 X 登陆表面漫步
-  if (e.code === 'KeyX' && landTarget) { beginRoamLanding(landTarget); return; }
+  if (e.code === 'KeyX') {
+    if (landTarget) { beginRoamLanding(landTarget); return; }
+    for (const L of LOCATIONS) {
+      const h = hazardProfile(L); if (!h || L._landable) continue;
+      if (camera.position.distanceTo(L._pos) < h.range) { showSub(`⚠ ${h.label}——这里无法着陆，但你已感受到它的威力`); return; }
+    }
+    return;
+  }
   if (e.code === 'KeyE') toggleCard();
   if (e.code === 'KeyH') toggleHelp();
   if (e.code === 'KeyR') triggerReturn();
@@ -713,7 +723,11 @@ function updateEnterPrompt() {
   if (!enterPrompt) return;
   if (interiorActive) { enterPrompt.style.display = 'flex'; enterPrompt.textContent = '🛰 已进入舱内 · 按 F 离开'; }
   else if (enterTarget) { enterPrompt.style.display = 'flex'; enterPrompt.textContent = `🛰 按 F 进入「${enterTarget.name}」舱内`; }
-  else if (landTarget && !roamSurfaceActive) { enterPrompt.style.display = 'flex'; enterPrompt.textContent = `🪐 按 X 登陆「${landTarget.name}」表面漫步`; }
+  else if (landTarget && !roamSurfaceActive) {
+    const cfg = getLandingConfig(landTarget);
+    enterPrompt.style.display = 'flex';
+    enterPrompt.textContent = (cfg && cfg.cloudDeck) ? `☁ 按 X 进入「${landTarget.name}」云顶漂浮` : `🪐 按 X 登陆「${landTarget.name}」表面漫步`;
+  }
   else { enterPrompt.style.display = 'none'; }
 }
 // 危险天体邻近反馈：靠近高温/强辐射/极寒等天体时，屏幕边缘浮现对应色彩与警告
@@ -1211,7 +1225,7 @@ function animate() {
   }
   composer.render();
   if (mode === 'expedition') updateExpedition(dt);
-  else if (roamSurfaceActive) { exp.t += dt; updateSurface(dt); }
+  else if (roamSurfaceActive) { exp.t += dt; if (exp.surfaceMode === 'cloud') updateCloudDeck(dt); else updateSurface(dt); }
   else updateHUD();
 }
 animate();
@@ -1304,18 +1318,22 @@ const LANDING = {
     ],
   },
   earth: {
-    id: 'earth', name: '地球', nameEn: 'Earth', gravity: 40, gravLabel: '1g',
-    sky: 0x6db4ff, fog: 0xa9c9ec, fogDensity: 0.00034,
-    groundColor: '#4a7a3a', groundSpots: 30, hasAtmosphere: true,
+    id: 'earth', name: '地球', nameEn: 'Earth', gravity: 40, gravLabel: '1g', earth: true,
+    sky: 0x9fc4ff, fog: 0xcfe6ff, fogDensity: 0.00022,
+    groundColor: '#3f7a35', groundSpots: 30, hasAtmosphere: true,
     farColor: 0x2a6db4, dust: false, extras: null,
     landTitle: '地球 · 蓝色故乡',
-    landDesc: '你回到了自己的母星。重力是熟悉的 1g，空气湿润，天空湛蓝。这片海岸平原草木葱茏——在浩瀚星海里，它是目前已知唯一孕育了生命的世界。',
+    landDesc: '你回到了自己的母星。1g 的重力、湿润的空气、湛蓝的天空——这片草木葱茏的海岸平原，是浩瀚星海里目前已知唯一孕育了生命的世界。远处城市的轮廓提醒你：文明就在这里。',
     craters: [],
-    moons: [{ r: 320, color: 0xcfcfcf, orbitR: 9000, h: 5200, spd: 0.02 }],
+    moons: [{ r: 520, color: 0xd8d8d8, orbitR: 11000, h: 4200, spd: 0.01 }],
     pois: [
-      { x: -2600, y: 60, z: -1800, id: 'everest', name: '珠穆朗玛峰', desc: '地球最高峰，海拔约 8849 米。它由印度板块与欧亚板块挤压隆起，至今仍以每年数毫米的速度长高。' },
-      { x: 2400, y: 40, z: 1400, id: 'grandcanyon', name: '科罗拉多大峡谷', desc: '历经约 600 万年科罗拉多河切割，深达 1.8 公里、绵延 446 公里，岩层像一本记录地球亿万年历史的书。' },
-      { x: 0, y: 50, z: 3200, id: 'amazon', name: '亚马逊雨林', desc: '地球之肺：占全球雨林一半以上，栖息着已知物种的约 10%，每天通过光合作用向大气释放海量氧气。' },
+      { x: -2600, y: 0, z: -1800, model: 'everest', name: '珠穆朗玛峰', desc: '地球最高峰，海拔约 8849 米。它由印度板块与欧亚板块挤压隆起，至今仍以每年数毫米的速度长高。' },
+      { x: 2400, y: 0, z: 1400, model: 'canyon', name: '科罗拉多大峡谷', desc: '历经约 600 万年科罗拉多河切割，深达 1.8 公里、绵延 446 公里，岩层像一本记录地球亿万年历史的书。' },
+      { x: 0, y: 0, z: 3200, model: 'forest', name: '亚马逊雨林', desc: '地球之肺：占全球雨林一半以上，栖息着已知物种的约 10%，每天通过光合作用向大气释放海量氧气。' },
+      { x: -3400, y: 0, z: 700, model: 'eiffel', name: '埃菲尔铁塔', desc: '1889 年为巴黎世界博览会建成，高约 330 米。它曾是全世界最高的人造建筑，如今是法国的象征，每年吸引数百万游客。' },
+      { x: 3200, y: 0, z: -1600, model: 'pyramids', name: '吉萨金字塔群', desc: '古埃及人为法老修建的陵墓，其中胡夫金字塔原高约 146 米，是古代世界七大奇迹中唯一大体保存至今的一座。' },
+      { x: 1400, y: 0, z: -2800, model: 'greatwall', name: '万里长城', desc: '人类历史上规模最大的军事防御工程，总长逾 2 万公里。它并非一道直线，而是依山势起伏、蜿蜒于崇山峻岭之间。' },
+      { x: -1200, y: 0, z: 2800, model: 'statue', name: '自由女神像', desc: '法国赠予美国的礼物，1886 年落成，高约 93 米。她手持火炬，象征着自由与民主，是纽约港最著名的地标。' },
     ],
   },
   pluto: {
@@ -1378,10 +1396,74 @@ const LANDING = {
       { x: 0, y: 50, z: 2800, id: 'enc-ocean', name: '地下海洋', desc: '土卫二内部被土星引力潮汐加热，维持着全球性液态水海洋。它与木卫二并列，是太阳系最可能找到地外生命的热点。' },
     ],
   },
+  proxima: { id: 'proxima', name: '比邻星 b', nameEn: 'Proxima b', gravity: 18, gravLabel: '0.5g (估)',
+    sky: 0x3a2a3a, fog: 0x4a2a2a, fogDensity: 0.0005, groundColor: '#7a5a44', groundSpots: 34, hasAtmosphere: false, farColor: 0x7a5a44, dust: false, extras: null,
+    landTitle: '比邻星 b · 红矮星下的世界', landDesc: '你站在距太阳最近（4.2 光年）的系外行星上。它的恒星是一颗暗红色矮星，天空常年泛着暗红的暮光。这颗行星很可能被潮汐锁定——一面永恒白昼、一面永恒黑夜，交界处的“晨昏线”或许是唯一温和的宜居地带。',
+    craters: [[1300, 700, 300], [-1700, -600, 360], [2400, 1300, 260]], moons: [],
+    pois: [
+      { x: -1300, y: 60, z: -900, id: 'prox-day', name: '永昼面', desc: '朝向恒星的一面永远被照亮、温度可能高达数十摄氏度；岩石在恒定的红光下龟裂。' },
+      { x: 2200, y: 50, z: 1400, id: 'prox-night', name: '永夜面', desc: '背向恒星的一面永远是零下百余摄氏度的冰原，只在偶尔的恒星耀斑中闪过微光。' },
+      { x: 0, y: 50, z: 3000, id: 'prox-terminator', name: '晨昏线', desc: '昼夜交界的狭窄地带温度恰到好处，被科学家认为是比邻星 b 上最可能存在液态水与生命的地方。' },
+    ] },
+  trappist1e: { id: 'trappist1e', name: 'TRAPPIST-1e', nameEn: 'TRAPPIST-1e', gravity: 20, gravLabel: '0.93g (估)',
+    sky: 0x244a5a, fog: 0x2a4a5a, fogDensity: 0.00045, groundColor: '#4a8c6a', groundSpots: 30, hasAtmosphere: true, farColor: 0x2a6a6a, dust: false, extras: null,
+    landTitle: 'TRAPPIST-1e · 七姐妹之星', landDesc: '你站在一颗约 40 光年外、体积与地球相近的岩质行星上。它环绕一颗超冷红矮星运行，是著名的 TRAPPIST-1 七行星系统中最可能拥有液态水海洋的成员。抬头望去，另外几颗行星会在天空中大如满月。',
+    craters: [[1200, 600, 260], [-1600, -500, 300]], moons: [{ r: 700, color: 0xff9a7a, orbitR: 8000, h: 3000, spd: 0.03 }, { r: 520, color: 0x9fd8ff, orbitR: 11000, h: 4500, spd: 0.02 }],
+    pois: [
+      { x: -1200, y: 60, z: -800, id: 't1-ocean', name: '全球海洋', desc: '模型显示 TRAPPIST-1e 可能几乎被海洋覆盖。它的密度暗示着岩石核心外包裹着大量水——一个真正的“水世界”。' },
+      { x: 2100, y: 50, z: 1300, id: 't1-siblings', name: '天空中的姊妹星', desc: '由于行星间距离极近，相邻行星在天空中显得巨大，甚至能看到它们的相位变化，如同我们在地球看月亮。' },
+      { x: 0, y: 50, z: 2900, id: 't1-habit', name: '宜居带核心', desc: 'TRAPPIST-1e 正位于其恒星的宜居带中央，接收的能量与地球相近，是寻找地外生命的头号候选之一。' },
+    ] },
+  kepler452b: { id: 'kepler452b', name: '开普勒-452b', nameEn: 'Kepler-452b', gravity: 30, gravLabel: '~1.6g (估)',
+    sky: 0x2a4a7a, fog: 0x355a8a, fogDensity: 0.0004, groundColor: '#6a8cd8', groundSpots: 32, hasAtmosphere: true, farColor: 0x3a6db4, dust: false, extras: null,
+    landTitle: '开普勒-452b · 地球的年长表亲', landDesc: '你站在一颗约 1400 光年外、比地球大 60%、绕类太阳恒星运行的“超级地球”上。它的一年约 385 天，位于宜居带，常被称为“地球年长表亲”。这里的重力可能接近地球的 2 倍。',
+    craters: [[1300, 700, 300], [-1700, -600, 340]], moons: [],
+    pois: [
+      { x: -1300, y: 60, z: -900, id: 'k452-star', name: '类太阳恒星', desc: '它的恒星与太阳极为相似，只是更老、更亮。这意味着在它演化到今天，接收到的能量比地球略多——它或许正经历着地球未来的温室命运。' },
+      { x: 2200, y: 50, z: 1400, id: 'k452-year', name: '385 天的年轮', desc: '开普勒-452b 的公转周期约 385 天，与地球惊人地接近，让它成为寻找“另一个地球”道路上最著名的候选者之一。' },
+      { x: 0, y: 50, z: 3000, id: 'k452-mass', name: '超级地球重力', desc: '质量约为地球的 5 倍，表面重力可能接近 2g——在这里，你每走一步都像背着一个自己。' },
+    ] },
+  lhs1140b: { id: 'lhs1140b', name: 'LHS 1140 b', nameEn: 'LHS 1140 b', gravity: 32, gravLabel: '~2.3g (估)',
+    sky: 0x1a2a4a, fog: 0x22304a, fogDensity: 0.0005, groundColor: '#6b8fb0', groundSpots: 30, hasAtmosphere: true, farColor: 0x3a5a8a, dust: false, extras: null,
+    landTitle: 'LHS 1140 b · 致密的超级地球', landDesc: '你站在一颗距太阳系约 49 光年、密度极高的“超级地球”上。它的质量约为地球的 6.4 倍、却只比地球大 35%——意味着它极可能是颗岩石行星，甚至可能拥有厚厚的大气与液态水海洋。',
+    craters: [[1200, 600, 280], [-1600, -500, 320]], moons: [],
+    pois: [
+      { x: -1200, y: 60, z: -800, id: 'lhs-density', name: '岩石巨兽', desc: 'LHS 1140 b 的密度之大，几乎排除了气态外壳的可能——它是一颗货真价实的岩石世界，表面重力约为地球的两倍多。' },
+      { x: 2100, y: 50, z: 1300, id: 'lhs-transit', name: '凌星观测', desc: '它恰好从恒星前方经过，让我们能借星光穿过大气的“指纹”分析其成分——是目前最利于寻找生命迹象的系外行星之一。' },
+      { x: 0, y: 50, z: 2900, id: 'lhs-water', name: '潜在海洋', desc: '若它拥有足够厚的大气，表面温度或允许液态水存在；有模型甚至推测它可能是一颗被海洋覆盖的世界。' },
+    ] },
+  belt: { id: 'belt', name: '小行星带', nameEn: 'Asteroid Belt', gravity: 2, gravLabel: '~0.02g',
+    sky: 0x05060c, fog: 0x080a12, fogDensity: 0.00016, groundColor: '#8a7a66', groundSpots: 36, hasAtmosphere: false, farColor: 0x8a7a66, dust: true, dustColor: 0x9a8c7a, dustCount: 900, extras: null,
+    landTitle: '小行星带 · 一块漂流的巨石', landDesc: '你降落在一块直径数公里的小行星表面。这里位于火星与木星之间，散布着数百万块岩石碎块——它们是一颗未能聚合成行星的“失败行星”残骸。重力微乎其微，轻轻一跳就能飘起数米。',
+    craters: [[1300, 700, 340], [-1700, -600, 400], [2400, 1400, 300], [-800, 1900, 260]], moons: [],
+    pois: [
+      { x: -1300, y: 70, z: -900, id: 'belt-rock', name: '碎石海洋', desc: '小行星带的物质总量加起来，也远小于月球。你脚下这块石头，只是其中微不足道的一粒。' },
+      { x: 2200, y: 60, z: 1400, id: 'belt-origin', name: '失败的行星', desc: '主流假说认为，木星的强大引力扰乱了这片区域的物质，使它们始终无法凝聚成一颗真正的行星。' },
+      { x: 0, y: 50, z: 2900, id: 'belt-ceres', name: '带中之王 · 谷神星', desc: '小行星带里最大的天体是谷神星——一颗直径约 940 公里的矮行星，已被单独列为可登陆世界。' },
+    ] },
+};
+// 气态 / 冰巨行星：没有固体表面，改为“云顶漂浮”体验
+const GASDECK = {
+  jupiter: { id: 'jupiter', name: '木星', nameEn: 'Jupiter', cloudDeck: true, base: 0xd8a47f, stormColor: 0xc0492e,
+    landTitle: '木星 · 云顶风暴之上', landDesc: '你悬浮在太阳系最大的行星云端。这里没有固体表面——脚下是厚达数千公里、以每秒上百米速度翻涌的氢氦风暴。那颗比地球还大的“大红斑”，是一场刮了数百年的超级飓风。',
+    pois: [{ x: 0, y: 0, z: -2600, storm: true, name: '大红斑', desc: '木星大红斑：一个持续至少 350 年的反气旋风暴，直径约 1.6 万公里，足以装下整个地球。它比周围云层高出约 8 公里，呈标志性的砖红色。' }] },
+  saturn: { id: 'saturn', name: '土星', nameEn: 'Saturn', cloudDeck: true, base: 0xe3c98b, stormColor: 0xb98a4a,
+    landTitle: '土星 · 金色云海', landDesc: '你飘在土星的大气顶层。这颗以壮丽光环闻名的气态巨行星，主要由氢和氦组成，同样没有可供立足的固体地表。这里静谧、金黄，远处行星环在云隙间若隐若现。',
+    pois: [{ x: 0, y: 0, z: -2600, name: '土星环投影', desc: '土星环由无数冰与岩石碎块构成，宽达数十万公里却薄如刀刃。在云端仰望，环的阴影会像巨大的弧线扫过天幕。' }] },
+  uranus: { id: 'uranus', name: '天王星', nameEn: 'Uranus', cloudDeck: true, base: 0x9fe3e3, stormColor: 0x8fd4d4,
+    landTitle: '天王星 · 青色冰雾', landDesc: '你悬浮在天王星云顶。这颗冰巨星几乎“躺着”自转——自转轴倾斜约 98°，像在轨道上滚动前进。大气中的甲烷吸收红光，让它呈现梦幻的青蓝色。',
+    pois: [{ x: 0, y: 0, z: -2600, name: '极地之阳', desc: '由于极度倾斜，天王星的一极会连续约 42 年朝向太阳、另一极陷入黑暗——这里的每个季节，都长达地球人近乎一生的世纪。' }] },
+  neptune: { id: 'neptune', name: '海王星', nameEn: 'Neptune', cloudDeck: true, base: 0x3b5bdb, stormColor: 0x2740a0,
+    landTitle: '海王星 · 深蓝疾风', landDesc: '你飘在海王星云顶。这里有太阳系最猛烈的风——时速可超 2000 公里。这颗深蓝色的冰巨星依靠内部余热，维持着狂暴的大气活动。',
+    pois: [{ x: 0, y: 0, z: -2600, name: '大暗斑', desc: '海王星曾观测到类似木星大红斑的“大暗斑”风暴，宽度约地球大小，却在被发现后数年内便消失——这里的天气变幻莫测。' }] },
+  hotjupiter: { id: 'hotjupiter', name: '热木星 51 Peg b', nameEn: '51 Peg b', cloudDeck: true, base: 0xd87a3a, stormColor: 0xa83a1a,
+    landTitle: '热木星 · 炙烤肉侧', landDesc: '你悬浮在一颗距恒星极近的“热木星”云顶。它被潮汐锁定：永远以炽热的一面朝向恒星，温度可超 1000℃，另一面则永远黑暗。这是人类发现的第一类系外行星。',
+    pois: [{ x: 0, y: 0, z: -2600, name: '晨昏线', desc: '热木星明暗交界的晨昏线，是理论上最可能存在奇特金属云（如硅酸盐、铁云）的地方——风在这里把蒸发又凝结的物质来回搬运。' }] },
 };
 function getLandingConfig(L) {
   if (L.id === 'mars') return PLANETS.mars;
   if (L.id === 'moon') return PLANETS.moon;
+  if (GASDECK[L.id]) return GASDECK[L.id];
   return LANDING[L.id] || null;
 }
 
@@ -1390,6 +1472,7 @@ const exp = {
   group: null, rocket: null, flame: null, flameOn: false, earth: null, marsFar: null,
   debris: [], surface: null, player: { vy: 0, onGround: true }, pois: [], dust: null,
   moons: [], earthSky: null, targetPlanet: null, voiceOn: true,
+  surfaceMode: 'walk', cloudLayer: null, cloudSky: null,
 };
 
 /* ---------- 远征 DOM ---------- */
@@ -1564,6 +1647,222 @@ function makePOI(group, x, y, z, name, desc, id) {
   const label = makeTextSprite(name); label.position.set(x, 1780, z); label.scale.multiplyScalar(2.4); group.add(label);
   return { x, y, z, name, desc, id, beam, ring, label, done: false };
 }
+
+/* ---------- 地球专属：高保真地表 ---------- */
+function makeEarthGroundTexture() {
+  const c = document.createElement('canvas'); c.width = c.height = 1024;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#3f7a35'; ctx.fillRect(0, 0, 1024, 1024);
+  for (let i = 0; i < 5200; i++) {
+    const x = Math.random() * 1024, y = Math.random() * 1024, r = 1 + Math.random() * 5;
+    const g = 0.7 + Math.random() * 0.6;
+    ctx.fillStyle = `rgba(${40 * g | 0},${120 * g | 0},${40 * g | 0},0.5)`;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+  }
+  ctx.strokeStyle = 'rgba(150,120,80,0.5)'; ctx.lineWidth = 26;
+  ctx.beginPath(); ctx.moveTo(0, 512); ctx.quadraticCurveTo(512, 420, 1024, 560); ctx.stroke();
+  for (let i = 0; i < 280; i++) {
+    const x = Math.random() * 1024, y = Math.random() * 1024;
+    ctx.fillStyle = ['#ffffff', '#ffd84d', '#ff7ba8', '#ffffff'][i % 4];
+    ctx.beginPath(); ctx.arc(x, y, 2 + Math.random() * 2, 0, 7); ctx.fill();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(14, 14); return t;
+}
+function makeTree(kind) {
+  const g = new THREE.Group();
+  if (kind === 'pine') {
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(6, 9, 60, 8), new THREE.MeshStandardMaterial({ color: 0x6b4a2b, roughness: 1 }));
+    trunk.position.y = 30; g.add(trunk);
+    for (let i = 0; i < 3; i++) {
+      const cone = new THREE.Mesh(new THREE.ConeGeometry(70 - i * 18, 70, 10), new THREE.MeshStandardMaterial({ color: 0x2f6b32, roughness: 1 }));
+      cone.position.y = 60 + i * 46; g.add(cone);
+    }
+  } else {
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(8, 10, 80, 8), new THREE.MeshStandardMaterial({ color: 0x6b4a2b, roughness: 1 }));
+    trunk.position.y = 40; g.add(trunk);
+    const crown = new THREE.Mesh(new THREE.IcosahedronGeometry(70, 0), new THREE.MeshStandardMaterial({ color: 0x4f8f3a, roughness: 1, flatShading: true }));
+    crown.position.y = 120; g.add(crown);
+  }
+  return g;
+}
+function makeEiffel() {
+  const g = new THREE.Group(); const mat = new THREE.MeshStandardMaterial({ color: 0x8a8f96, metalness: 0.6, roughness: 0.5 });
+  const leg = (x) => { const l = new THREE.Mesh(new THREE.CylinderGeometry(10, 22, 520, 8), mat); l.position.set(x, 260, 0); l.rotation.z = x > 0 ? -0.12 : 0.12; g.add(l); };
+  leg(-70); leg(70);
+  const arch = new THREE.Mesh(new THREE.TorusGeometry(78, 9, 8, 24, Math.PI), mat); arch.position.y = 180; arch.rotation.z = Math.PI; g.add(arch);
+  const mid = new THREE.Mesh(new THREE.CylinderGeometry(14, 18, 360, 8), mat); mid.position.y = 540; g.add(mid);
+  const top = new THREE.Mesh(new THREE.CylinderGeometry(7, 12, 200, 8), mat); top.position.y = 820; g.add(top);
+  const tip = new THREE.Mesh(new THREE.ConeGeometry(7, 40, 8), new THREE.MeshStandardMaterial({ color: 0xffd84d, emissive: 0x553300, emissiveIntensity: 0.5 })); tip.position.y = 940; g.add(tip);
+  return g;
+}
+function makePyramids() {
+  const g = new THREE.Group(); const mat = new THREE.MeshStandardMaterial({ color: 0xcdb083, roughness: 1 });
+  const p1 = new THREE.Mesh(new THREE.ConeGeometry(360, 300, 4), mat); p1.position.set(0, 150, 0); p1.rotation.y = Math.PI / 4; g.add(p1);
+  const p2 = new THREE.Mesh(new THREE.ConeGeometry(240, 210, 4), mat); p2.position.set(520, 105, 180); p2.rotation.y = Math.PI / 4; g.add(p2);
+  const p3 = new THREE.Mesh(new THREE.ConeGeometry(200, 170, 4), mat); p3.position.set(-420, 85, -160); p3.rotation.y = Math.PI / 4; g.add(p3);
+  return g;
+}
+function makeGreatWall() {
+  const g = new THREE.Group(); const mat = new THREE.MeshStandardMaterial({ color: 0xb9a98c, roughness: 1 });
+  for (let i = 0; i < 14; i++) {
+    const seg = new THREE.Mesh(new THREE.BoxGeometry(220, 120, 40), mat);
+    seg.position.set(-1400 + i * 220, 60 + Math.sin(i * 0.6) * 40, 0); seg.rotation.y = 0.18; g.add(seg);
+    const t = new THREE.Mesh(new THREE.BoxGeometry(40, 30, 46), mat); t.position.set(-1400 + i * 220, 135 + Math.sin(i * 0.6) * 40, 0); t.rotation.y = 0.18; g.add(t);
+  }
+  return g;
+}
+function makeStatue() {
+  const g = new THREE.Group(); const green = new THREE.MeshStandardMaterial({ color: 0x4fae8e, metalness: 0.3, roughness: 0.6 });
+  const ped = new THREE.Mesh(new THREE.BoxGeometry(160, 160, 160), new THREE.MeshStandardMaterial({ color: 0x9a9a9a, roughness: 1 })); ped.position.y = 80; g.add(ped);
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(60, 90, 360, 12), green); body.position.y = 340; g.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(46, 16, 16), green); head.position.y = 560; g.add(head);
+  const arm = new THREE.Mesh(new THREE.CylinderGeometry(16, 16, 200, 8), green); arm.position.set(0, 520, 70); arm.rotation.x = Math.PI / 2.6; g.add(arm);
+  const torch = new THREE.Mesh(new THREE.SphereGeometry(40, 16, 16), new THREE.MeshStandardMaterial({ color: 0xffd84d, emissive: 0xffaa00, emissiveIntensity: 1.2 })); torch.position.set(0, 660, 90); g.add(torch);
+  return g;
+}
+function makeCitySkyline() {
+  const g = new THREE.Group(); const mat = new THREE.MeshStandardMaterial({ color: 0xb9c2cc, roughness: 0.7, metalness: 0.2 });
+  for (let i = 0; i < 22; i++) {
+    const w = 60 + Math.random() * 70, h = 180 + Math.random() * 620;
+    const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, 60), mat); b.position.set(-1100 + i * 110, h / 2, -2600 - Math.random() * 200); g.add(b);
+    const win = new THREE.Mesh(new THREE.BoxGeometry(w * 0.9, h * 0.95, 62), new THREE.MeshStandardMaterial({ color: 0x223044, emissive: 0xffe08a, emissiveIntensity: 0.25 }));
+    win.position.copy(b.position); g.add(win);
+  }
+  return g;
+}
+function makeMountain(h, snow) {
+  const g = new THREE.Group(); const mat = new THREE.MeshStandardMaterial({ color: 0x6b6357, roughness: 1 });
+  const m = new THREE.Mesh(new THREE.ConeGeometry(900, h, 6), mat); m.position.y = h / 2; m.rotation.y = 0.4; g.add(m);
+  if (snow) { const cap = new THREE.Mesh(new THREE.ConeGeometry(900 * (1 - h * 0.0016), h * 0.28, 6), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8 })); cap.position.y = h * 0.86; cap.rotation.y = 0.4; g.add(cap); }
+  return g;
+}
+function buildLandmark(kind) {
+  switch (kind) {
+    case 'everest': return makeMountain(2600, true);
+    case 'canyon': { const g = new THREE.Group(); const m = new THREE.Mesh(new THREE.BoxGeometry(4200, 520, 1400), new THREE.MeshStandardMaterial({ color: 0x9c5a32, roughness: 1 })); m.position.y = -260; g.add(m); return g; }
+    case 'forest': { const g = new THREE.Group(); for (let i = 0; i < 120; i++) { const t = makeTree(Math.random() < 0.5 ? 'pine' : 'broad'); const s = 0.7 + Math.random() * 0.8; t.scale.setScalar(s); t.position.set((Math.random() - 0.5) * 1400, 0, (Math.random() - 0.5) * 1400); g.add(t); } return g; }
+    case 'eiffel': return makeEiffel();
+    case 'pyramids': return makePyramids();
+    case 'greatwall': return makeGreatWall();
+    case 'statue': return makeStatue();
+    default: return null;
+  }
+}
+function buildEarthSurface(group, planet) {
+  // 天空穹顶（蓝→白渐变）
+  const skyMat = new THREE.ShaderMaterial({ side: THREE.BackSide,
+    uniforms: { top: { value: new THREE.Color(0x2f6fd0) }, bot: { value: new THREE.Color(0xcfe6ff) } },
+    vertexShader: `varying float h; void main(){ h = normalize(position).y; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
+    fragmentShader: `varying float h; uniform vec3 top; uniform vec3 bot; void main(){ float t = clamp(h*0.5+0.5,0.0,1.0); gl_FragColor = vec4(mix(bot,top,pow(t,0.8)),1.0); }` });
+  group.add(new THREE.Mesh(new THREE.SphereGeometry(30000, 32, 16), skyMat));
+  const sun = new THREE.DirectionalLight(0xfff4e0, 2.6); sun.position.set(2600, 2200, -1800); group.add(sun);
+  group.add(new THREE.HemisphereLight(0x9fc4ff, 0x4a7a3a, 0.95));
+  const cloudSphere = new THREE.Mesh(new THREE.SphereGeometry(14000, 32, 16),
+    new THREE.MeshBasicMaterial({ map: makeCloudTexture(), transparent: true, opacity: 0.5, side: THREE.BackSide, depthWrite: false }));
+  group.add(cloudSphere); exp.earthSky = cloudSphere;
+  // 起伏地面
+  const SIZE = 15000, SEG = 240;
+  const geo = new THREE.PlaneGeometry(SIZE, SIZE, SEG, SEG); geo.rotateX(-Math.PI / 2);
+  const pos = geo.attributes.position; const colors = new Float32Array(pos.count * 3);
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), z = pos.getZ(i);
+    let y = Math.sin(x * 0.0008) * 30 + Math.cos(z * 0.001) * 26 + Math.sin((x + z) * 0.0005) * 20;
+    const lakeD = Math.hypot(x - 1800, z - 2400);
+    if (lakeD < 1400) y -= (1 - lakeD / 1400) * 220;
+    pos.setY(i, y);
+    const h = THREE.MathUtils.clamp((y + 120) / 300, 0, 1);
+    const col = new THREE.Color(0xffffff).multiplyScalar(0.8 + h * 0.35);
+    colors[i * 3] = col.r; colors[i * 3 + 1] = col.g; colors[i * 3 + 2] = col.b;
+  }
+  geo.computeVertexNormals(); geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  const ground = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: makeEarthGroundTexture(), vertexColors: true, roughness: 1, metalness: 0 }));
+  group.add(ground);
+  // 湖泊 + 沙滩
+  const lake = new THREE.Mesh(new THREE.CircleGeometry(1400, 64), new THREE.MeshStandardMaterial({ color: 0x2f6fb0, roughness: 0.15, metalness: 0.4, transparent: true, opacity: 0.92 }));
+  lake.rotation.x = -Math.PI / 2; lake.position.set(1800, 6, 2400); group.add(lake);
+  const beach = new THREE.Mesh(new THREE.RingGeometry(1400, 1620, 64), new THREE.MeshStandardMaterial({ color: 0xcdb083, roughness: 1 }));
+  beach.rotation.x = -Math.PI / 2; beach.position.set(1800, 4, 2400); group.add(beach);
+  // 树木（实例化针叶/阔叶近似）
+  const trees = new THREE.InstancedMesh(new THREE.ConeGeometry(48, 220, 7), new THREE.MeshStandardMaterial({ color: 0x2f6b32, roughness: 1 }), 900);
+  const dum = new THREE.Object3D(); let placed = 0;
+  while (placed < 900) {
+    const rx = (Math.random() - 0.5) * 13000, rz = (Math.random() - 0.5) * 13000;
+    if (Math.hypot(rx - 1800, rz - 2400) < 1700) continue;
+    const s = 0.7 + Math.random() * 1.1; dum.position.set(rx, s * 110, rz); dum.rotation.set(0, Math.random() * 6, 0); dum.scale.set(s, s, s); dum.updateMatrix();
+    trees.setMatrixAt(placed++, dum.matrix);
+  }
+  group.add(trees);
+  // 远景文明与山脉
+  group.add(makeCitySkyline());
+  const mt1 = makeMountain(2200, true); mt1.position.set(-4200, 0, 3600); group.add(mt1);
+  const mt2 = makeMountain(1700, true); mt2.position.set(4600, 0, -3800); group.add(mt2);
+  const mt3 = makeMountain(1400, false); mt3.position.set(-3600, 0, -4200); group.add(mt3);
+  // POI 地标（模型 + 光柱）
+  exp.moons = []; exp.dust = null; exp.earthSky = cloudSphere;
+  exp.pois = planet.pois.map(p => { const m = buildLandmark(p.model); if (m) { m.position.set(p.x, 0, p.z); group.add(m); } return makePOI(group, p.x, p.y || 0, p.z, p.name, p.desc, p.id); });
+}
+
+/* ---------- 气态巨行星：云顶漂浮（无固体表面） ---------- */
+function makeGasCloudTexture(baseHex) {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 512; const ctx = c.getContext('2d');
+  const base = new THREE.Color(baseHex);
+  for (let y = 0; y < 512; y++) {
+    const lat = y / 512; const turb = 0.5 + 0.5 * Math.sin(lat * 40 + Math.sin(y * 0.05) * 6);
+    const sh = 0.75 + 0.25 * turb + 0.06 * Math.sin(lat * 120);
+    const col = base.clone().multiplyScalar(Math.max(0.4, sh));
+    ctx.fillStyle = `rgb(${col.r * 255 | 0},${col.g * 255 | 0},${col.b * 255 | 0})`; ctx.fillRect(0, y, 1024, 1);
+  }
+  for (let i = 0; i < 420; i++) {
+    const x = Math.random() * 1024, y = Math.random() * 512, r = 10 + Math.random() * 42;
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, 'rgba(255,255,255,0.18)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
+}
+function buildCloudDeck(group, cfg) {
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(16000, 32, 16), new THREE.MeshBasicMaterial({ color: cfg.base, side: THREE.BackSide }));
+  group.add(sky); exp.cloudSky = sky;
+  const layer = new THREE.Mesh(new THREE.SphereGeometry(9000, 48, 24),
+    new THREE.MeshBasicMaterial({ map: makeGasCloudTexture(cfg.base), transparent: true, opacity: 0.92, side: THREE.BackSide, depthWrite: false }));
+  group.add(layer); exp.cloudLayer = layer;
+  group.add(new THREE.AmbientLight(0xffffff, 0.9));
+  const sun = new THREE.DirectionalLight(0xffffff, 1.4); sun.position.set(0, 3000, -6000); group.add(sun);
+  exp.moons = []; exp.dust = null; exp.earthSky = null;
+  exp.pois = cfg.pois.map(p => {
+    if (p.storm) {
+      const eye = new THREE.Mesh(new THREE.CircleGeometry(1500, 48), new THREE.MeshBasicMaterial({ color: cfg.stormColor, transparent: true, opacity: 0.85, side: THREE.DoubleSide }));
+      eye.position.set(p.x, 0, p.z); eye.lookAt(0, 0, 0); group.add(eye);
+      const ring = new THREE.Mesh(new THREE.RingGeometry(1500, 1720, 48), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5, side: THREE.DoubleSide }));
+      ring.position.copy(eye.position); ring.lookAt(0, 0, 0); group.add(ring);
+    }
+    return makePOI(group, p.x, p.y || 0, p.z, p.name, p.desc, p.id);
+  });
+}
+function updateCloudDeck(dt) {
+  camera.getWorldDirection(tmp.fwd);
+  const fwd = new THREE.Vector3(tmp.fwd.x, 0, tmp.fwd.z).normalize();
+  const right = new THREE.Vector3().crossVectors(fwd, camera.up).normalize();
+  const move = new THREE.Vector3();
+  if (keys['KeyW']) move.add(fwd); if (keys['KeyS']) move.sub(fwd);
+  if (keys['KeyD']) move.add(right); if (keys['KeyA']) move.sub(right);
+  const speed = 320;
+  if (move.lengthSq() > 0) { move.normalize().multiplyScalar(speed * dt); camera.position.x += move.x; camera.position.z += move.z; }
+  if (keys['Space']) camera.position.y += 220 * dt;
+  camera.position.y += Math.sin(exp.t * 0.6) * 8 * dt;
+  const R = 7000; const d = Math.hypot(camera.position.x, camera.position.z);
+  if (d > R) { camera.position.x *= R / d; camera.position.z *= R / d; }
+  camera.position.y = THREE.MathUtils.clamp(camera.position.y, 40, 1200);
+  if (exp.cloudLayer) exp.cloudLayer.rotation.y += dt * 0.03;
+  for (const p of exp.pois) {
+    const dd = Math.hypot(camera.position.x - p.x, camera.position.z - p.z);
+    if (dd < 900 && !p.done) { p.done = true; unlockAch(p.id, p.name); expMilestone(p.name, p.desc); }
+    if (p.beam) { p.beam.material.opacity = p.done ? 0.14 : 0.55; p.beam.scale.y = 1 + 0.1 * Math.sin(exp.t * 3 + p.x); }
+  }
+  const left = exp.pois.filter(p => !p.done).length;
+  expObj.textContent = left > 0 ? `在云海中漂浮 · 飞向发光风暴眼解锁地标（剩余 ${left} 处）· 按 P 拍照 · 按 R 返航` : `✦ 你已穿越${exp.surfacePlanet.name}云海！按 R 返航`;
+}
+
 function buildPlanetSurface(group, planet) {
   const sky = new THREE.Mesh(new THREE.SphereGeometry(30000, 32, 16),
     new THREE.MeshBasicMaterial({ color: planet.sky, side: THREE.BackSide }));
@@ -1817,6 +2116,7 @@ function beginRoamLanding(L) {
   const cfg = getLandingConfig(L);
   if (!cfg) return;
   exp.surfacePlanet = cfg;
+  exp.surfaceMode = cfg.cloudDeck ? 'cloud' : 'walk';
   exp.phase = 'surface'; exp.t = 0; exp.pois = [];
   exp.player = { vy: 0, onGround: true };
   roamExitPos.copy(camera.position);
@@ -1825,26 +2125,27 @@ function beginRoamLanding(L) {
   setRoamVisibility(false);
   if (exp.group) scene.remove(exp.group);
   exp.group = new THREE.Group(); scene.add(exp.group);
-  exp.moons = []; exp.earthSky = null; exp.dust = null;
-  buildPlanetSurface(exp.group, cfg);
+  exp.moons = []; exp.earthSky = null; exp.dust = null; exp.cloudLayer = null; exp.cloudSky = null;
+  if (cfg.earth) buildEarthSurface(exp.group, cfg);
+  else if (cfg.cloudDeck) buildCloudDeck(exp.group, cfg);
+  else buildPlanetSurface(exp.group, cfg);
   scene.background = new THREE.Color(cfg.sky);
   scene.fog = new THREE.FogExp2(cfg.fog, cfg.fogDensity);
   camera.position.set(0, 18, 0);
   camera.lookAt(0, 32, -220);
   if (!controls.isLocked) { try { controls.lock(); } catch (e) {} }
   showRoamSurfaceUI(true);
-  expHelp.textContent = ROAM_HELP;
+  expHelp.textContent = cfg.cloudDeck ? 'WASD 漂浮 · 空格 上升 · 飞向发光风暴眼解锁地标 · P 拍照 · R 返航' : ROAM_HELP;
   hazardEl.style.opacity = '0'; hazardWarn.style.display = 'none';
   document.body.classList.add('shake-land');
   setTimeout(() => document.body.classList.remove('shake-land'), 720);
   expMilestone(`着陆 · ${cfg.landTitle || cfg.name}`, cfg.landDesc || `你降落在了${cfg.name}表面。`);
-  const left = exp.pois.length;
-  expObj.textContent = `走向发光光柱，解锁${cfg.name}地标（剩余 ${left} 处）· 按 P 拍明信片 · 按 R 返航`;
+  if (!cfg.cloudDeck) { const left = exp.pois.length; expObj.textContent = `走向发光光柱，解锁${cfg.name}地标（剩余 ${left} 处）· 按 P 拍明信片 · 按 R 返航`; }
 }
 function exitRoamSurface() {
   roamSurfaceActive = false;
   if (exp.group) { scene.remove(exp.group); exp.group = null; }
-  exp.moons = []; exp.earthSky = null; exp.dust = null; exp.pois = [];
+  exp.moons = []; exp.earthSky = null; exp.dust = null; exp.cloudLayer = null; exp.cloudSky = null; exp.pois = []; exp.surfaceMode = 'walk';
   setRoamVisibility(true);
   scene.background = new THREE.Color(0x000006);
   scene.fog = new THREE.FogExp2(0x000006, 0.0000008);
