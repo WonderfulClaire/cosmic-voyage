@@ -3024,6 +3024,11 @@ function endExpedition() {
   scene.background = new THREE.Color(0x000006);
   scene.fog = new THREE.FogExp2(0x000006, 0.0000008);
   sunLight.intensity = 4.5;
+  // 修复：先切回 intro 并收起暂停菜单，再释放指针锁。
+  // 否则 unlock 事件会让漫游暂停遮罩弹出（此刻 gameState 仍为 flying、mode 已置回 roam），
+  // 导致远征结束回到开始界面后，暂停遮罩（z45）盖住开始界面（z40）的「星际远征」按钮，第二次点不进去。
+  gameState = 'intro';
+  hidePause();
   if (controls.isLocked) controls.unlock();
   showExpeditionUI(false);
   expBrief.style.display = 'none';
@@ -3031,7 +3036,6 @@ function endExpedition() {
   camera.lookAt(0, 0, 0);
   velocity.set(0, 0, 0); flyTo = null; currentZone = ZONES[0];
   fovTarget = 72; camera.fov = 72; camera.updateProjectionMatrix();
-  gameState = 'intro';
   document.getElementById('blocker').style.display = 'flex';
   Sound.setEnvironment('space');
   Sound.setWarp(0);
@@ -3100,7 +3104,7 @@ document.getElementById('je-return').addEventListener('click', () => {
 });
 
 // 当前构建版本（与 index.html 右上角角标一致）；SW cache-busting 已确保拿到最新代码
-const BUILD = '11';
+const BUILD = '12';
 // 任务线选择面板是否打开：用于阻止「打开面板时释放指针锁」误触发漫游暂停菜单
 let expeditionModalOpen = false;
 (function showBuildBadge() {
