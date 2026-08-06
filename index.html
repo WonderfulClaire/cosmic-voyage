@@ -38,9 +38,12 @@
       <div id="hud-zone">◈ 太阳系 · Solar System</div>
       <div id="hud-target">最近 · —</div>
       <div id="hud-hint">按 E 查看科普</div>
+      <button id="btn-expedition-hud" title="星际远征（剧情任务线）">🚀 星际远征</button>
       <button id="help-btn" title="操作指南 (H)">❔</button>
       <button id="sound-btn" title="声音开关 (M)">🔊</button>
     </div>
+
+    <div id="build-badge" title="当前构建版本">v…</div>
 
     <div id="help-backdrop"></div>
     <div id="help">
@@ -294,11 +297,11 @@
     </div>
   </div>
 
-  <script type="module" src="main.js?v=9"></script>
+  <script type="module" src="main.js?v=10"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=9').catch(() => {});
+        navigator.serviceWorker.register('./sw.js?v=10').catch(() => {});
       });
     }
   </script>
