@@ -63,6 +63,7 @@ controls.addEventListener('lock', () => {
   if (gameState === 'paused') { gameState = 'flying'; hidePause(); }
 });
 controls.addEventListener('unlock', () => {
+  if (expeditionModalOpen) return;                     // 打开任务线选择时释放指针，不进暂停菜单
   if (helpIsOpen()) { closeHelp(); return; }            // 关操作指南时不进入暂停
   if (mode === 'expedition') return;                    // 远征中 ESC 不触发漫游暂停
   if (roamSurfaceActive) return;                        // 地表探索中 ESC 不触发暂停
@@ -2677,6 +2678,7 @@ function startExpedition(missionId) {
   exp.mission = mission;
   exp.targetPlanet = PLANETS[mission.planet] || PLANETS.mars;
   mode = 'expedition';
+  expeditionModalOpen = false;
   exp.active = true; exp.phase = 'countdown'; exp.t = 0; exp.alt = 0; exp.reached = {}; exp.achievements.clear(); exp.debris = [];
   exp.moons = []; exp.earthSky = null; exp.dust = null;
   setRoamVisibility(false);
@@ -3098,7 +3100,9 @@ document.getElementById('je-return').addEventListener('click', () => {
 });
 
 // 当前构建版本（与 index.html 右上角角标一致）；SW cache-busting 已确保拿到最新代码
-const BUILD = '10';
+const BUILD = '11';
+// 任务线选择面板是否打开：用于阻止「打开面板时释放指针锁」误触发漫游暂停菜单
+let expeditionModalOpen = false;
 (function showBuildBadge() {
   const el = document.getElementById('build-badge');
   if (el) el.textContent = 'v' + BUILD;
@@ -3107,6 +3111,9 @@ const BUILD = '10';
 // 远征入口：绑多事件兜底（pointerdown 最早触发，最可靠；某些浏览器/SW 缓存会让 click 丢失）
 function _openExpedition(e) {
   console.log('[cosmic] 星际远征 opened · v' + BUILD + ' · event=' + (e && e.type) + ' target=' + (e && e.target && e.target.id) + ' mode=' + mode);
+  expeditionModalOpen = true;
+  // 漫游中指针被 PointerLock 锁住，必须主动释放，否则弹出的任务线面板无法用鼠标点选
+  try { controls.unlock(); } catch (err) { /* 指针未锁时 unlock 为空操作 */ }
   try { Sound.resume(); Sound.armMusic(); } catch (err) { console.warn('[cosmic] sound err', err); }
   const dest = document.getElementById('exp-dest');
   if (dest) {
@@ -3143,9 +3150,20 @@ function _openExpedition(e) {
     console.error('[cosmic] #btn-expedition-hud MISSING');
   }
 })();
+// 键盘入口：按下 T 打开任务线。漫游中指针被 PointerLock 锁住，鼠标点不到 HUD 按钮，
+// 但键盘事件在锁定状态下照常触发——这是漫游里最可靠的「星际远征」入口。
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'KeyT' && !expeditionModalOpen && mode !== 'expedition') {
+    e.preventDefault();
+    _openExpedition(e);
+  }
+});
 document.querySelectorAll('.ed-mission').forEach(b => b.addEventListener('click', () => startExpedition(b.dataset.mission)));
 document.getElementById('btn-ed-close').addEventListener('click', () => {
   const dest = document.getElementById('exp-dest'); if (dest) dest.style.display = 'none';
+  expeditionModalOpen = false;
+  // 未选任务直接关闭：恢复漫游（点击是用户手势，可重新请求指针锁）
+  if (gameState === 'paused' || gameState === 'flying') { try { controls.lock(); } catch (err) {} }
 });
 document.getElementById('btn-ph-close').addEventListener('click', () => {
   photoPanel.style.display = 'none';
