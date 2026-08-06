@@ -3097,16 +3097,32 @@ document.getElementById('je-return').addEventListener('click', () => {
   else endExpedition();
 });
 
+// 当前构建版本（与 index.html 右上角角标一致）；SW cache-busting 已确保拿到最新代码
+const BUILD = '10';
+(function showBuildBadge() {
+  const el = document.getElementById('build-badge');
+  if (el) el.textContent = 'v' + BUILD;
+})();
+
 // 远征入口：绑多事件兜底（pointerdown 最早触发，最可靠；某些浏览器/SW 缓存会让 click 丢失）
 function _openExpedition(e) {
-  console.log('[cosmic] 星际远征 clicked · v9 · event=' + (e && e.type) + ' target=' + (e && e.target && e.target.id));
+  console.log('[cosmic] 星际远征 opened · v' + BUILD + ' · event=' + (e && e.type) + ' target=' + (e && e.target && e.target.id) + ' mode=' + mode);
   try { Sound.resume(); Sound.armMusic(); } catch (err) { console.warn('[cosmic] sound err', err); }
   const dest = document.getElementById('exp-dest');
-  console.log('[cosmic] exp-dest 元素:', dest ? 'FOUND' : 'MISSING');
-  if (dest) dest.style.display = 'flex';
+  if (dest) {
+    dest.style.display = 'flex';
+    console.log('[cosmic] exp-dest 已显示(flex)');
+  } else {
+    console.error('[cosmic] #exp-dest MISSING —— 文件未加载完整');
+  }
   document.getElementById('blocker').style.display = 'none';
   if (typeof helpAutoTimer !== 'undefined' && helpAutoTimer) clearTimeout(helpAutoTimer);
   if (typeof helpPanel !== 'undefined' && helpPanel) closeHelp();
+  // 屏幕中央 toast 反馈，确认任务线选择已打开
+  const t = document.createElement('div'); t.className = 'exp-toast exp-toast-center';
+  t.textContent = '✅ 已打开任务线 · 选择你的故事';
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2200);
 }
 (function bindExpedition() {
   const btn = document.getElementById('btn-expedition');
@@ -3117,14 +3133,16 @@ function _openExpedition(e) {
   btn.addEventListener('click', _openExpedition);
   btn.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); _openExpedition(e); } });
   console.log('[cosmic] btn-expedition handlers bound');
-})();
-// 备用入口：任意页面位置按 X 键直接打开远征
-addEventListener('keydown', e => {
-  if (e.key === 'x' || e.key === 'X') {
-    const dest = document.getElementById('exp-dest');
-    if (dest && dest.style.display !== 'flex') { e.preventDefault(); _openExpedition(e); }
+  // 漫游 HUD 上的远征按钮（不依赖键盘，漫游中直接点）
+  const hud = document.getElementById('btn-expedition-hud');
+  if (hud) {
+    hud.addEventListener('pointerdown', _openExpedition);
+    hud.addEventListener('click', _openExpedition);
+    console.log('[cosmic] btn-expedition-hud handlers bound');
+  } else {
+    console.error('[cosmic] #btn-expedition-hud MISSING');
   }
-});
+})();
 document.querySelectorAll('.ed-mission').forEach(b => b.addEventListener('click', () => startExpedition(b.dataset.mission)));
 document.getElementById('btn-ed-close').addEventListener('click', () => {
   const dest = document.getElementById('exp-dest'); if (dest) dest.style.display = 'none';
