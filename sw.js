@@ -1,7 +1,7 @@
 // COSMIC VOYAGE — Service Worker
 // 同源静态资源缓存：重复访问秒开、源站带宽大幅下降、断网也能进首页。
-// v9: 缓存命名带 v9；HTML 用 ?v=9 cache-busting 强制刷新；activate 阶段彻底清掉旧版本。
-const CACHE = 'cosmic-v9';
+// v10: 缓存命名 cosmic-v10；HTML 引用 bump 到 ?v=10，确保 SW 不再返回旧 main.js。
+const CACHE = 'cosmic-v10';
 const CORE = [
   './index.html',
   './styles.css',
